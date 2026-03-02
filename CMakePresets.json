@@ -1,0 +1,23 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "default",
+      "binaryDir": "${sourceDir}/build",
+      "generator": "Ninja",
+      "description": "run `cmake --preset default` once to configure"
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "default",
+      "configurePreset": "default"
+    },
+    {
+      "name": "run",
+      "configurePreset": "default",
+      "targets": ["run"],
+      "description": "run `cmake --build --preset run` build+run (preset 'default' will just build)"
+    }
+  ]
+}
