@@ -1,0 +1,9 @@
+[submodule "vendor/Adafruit_AHRS"]
+	path = vendor/Adafruit_AHRS
+	url = git@github.com:bruceoberg/Adafruit_AHRS.git
+[submodule "vendor/libcalib"]
+	path = vendor/libcalib
+	url = git@github.com:bruceoberg/libcalib.git
+[submodule "vendor/image2wx"]
+	path = vendor/image2wx
+	url = git@github.com:bruceoberg/image2wx.git
