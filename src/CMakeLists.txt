@@ -6,9 +6,7 @@ find_package(OpenGL REQUIRED)
 find_package(wxWidgets REQUIRED COMPONENTS core base gl)
 include(${wxWidgets_USE_FILE})
 
-find_package(image2wx REQUIRED)
 include(${image2wx_USE_FILE})
-include_directories(${image2wx_SOURCE_DIR} ${image2wx_INCLUDE_DIRS})
 generate_image2wx_sources(PNG_SRCS "${PNGS}")
 list(APPEND SRCS ${PNG_SRCS})
 
@@ -34,4 +32,4 @@ else()
 	target_compile_definitions(SensorCal PUBLIC "LINUX")
 endif()
 
-target_link_libraries(SensorCal PUBLIC ${wxWidgets_LIBRARIES} ${OPENGL_LIBRARY} libcalib)
+target_link_libraries(SensorCal PUBLIC ${wxWidgets_LIBRARIES} ${OPENGL_LIBRARY} libcalib image2wx)
