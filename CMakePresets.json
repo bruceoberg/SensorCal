@@ -51,20 +51,17 @@
     {
       "name": "run-r",
       "configurePreset": "release",
-      "targets": ["run"],
-      "description": "run `cmake --build --preset run-r` to build&run (preset 'release' will just build)"
+      "targets": ["run"]
     },
     {
       "name": "run",
       "configurePreset": "dev",
-      "targets": ["run"],
-      "description": "run `cmake --build --preset run` to build&run (preset 'dev' will just build)"
+      "targets": ["run"]
     },
     {
       "name": "run-d",
       "configurePreset": "debug",
-      "targets": ["run"],
-      "description": "run `cmake --build --preset run-d` to build&run (preset 'debug' will just build)"
+      "targets": ["run"]
     }
   ]
 }
