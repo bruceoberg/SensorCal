@@ -284,6 +284,18 @@ wxArrayString serial_port_list()
 	free(buffer);
 #endif
 	list.Sort();
+
+	// macos 26 returns duplicate serial ports with the search above. remove them.
+
+	for (int iStr = 1; iStr < list.Count();)
+	{
+		if (list[iStr - 1] == list[iStr]) {
+			list.RemoveAt(iStr);
+		} else {
+			++iStr;
+		}
+	}
+
 	return list;
 }
 
