@@ -3,27 +3,27 @@
     "configurations": [
         {
             "name": "(lldb-mac) Launch",
-            "type": "lldb",
+            // lldb-dap is provided by msft's LLDB DAP plugin.
+            //  https://marketplace.visualstudio.com/items?itemName=llvm-vs-code-extensions.lldb-dap
+            "type": "lldb-dap",
             "request": "launch",
-            "program": "${workspaceFolder}/build/subprojects/Build/MotionCal_core/main.app",
-            "cwd": "${workspaceFolder}",
-            "preLaunchTask": "Build with CMake"
+            "program": "${command:cmake.launchTargetPath}",
+            // "program": "/Users/bruceoberg/code/SensorCal/build/debug/src/SensorCal.app/Contents/MacOS/SensorCal",
+            "cwd": "${workspaceFolder}"
         },
         {
             "name": "(lldb-linux) Launch",
             "type": "lldb",
             "request": "launch",
-            "program": "${workspaceFolder}/build/subprojects/Build/MotionCal_core/main",
-            "cwd": "${workspaceFolder}",
-            "preLaunchTask": "Build with CMake"
+            "program": "${command:cmake.launchTargetPath}",
+            "cwd": "${workspaceFolder}"
         },
         {
             "name": "(msvc) Launch",
             "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}\\build\\subprojects\\Build\\MotionCal_core\\Debug\\main.exe",
-            "cwd": "${workspaceFolder}",
-            "preLaunchTask": "Build with CMake"
+            "program": "$${command:cmake.launchTargetPath}",
+            "cwd": "${workspaceFolder}"
         }
     ]
 }

@@ -14,7 +14,8 @@ add_executable(SensorCal WIN32 MACOSX_BUNDLE ${SRCS})
 
 if(APPLE)
 	message("[SensorCal] building for mac")
-    # Set a custom plist file for the app bundle - needed for Mac OS Retina display
+
+	# Set a custom plist file for the app bundle - needed for Mac OS Retina display
 
     set_target_properties(SensorCal
 		PROPERTIES
@@ -24,6 +25,17 @@ if(APPLE)
 	
 	target_compile_definitions(SensorCal PUBLIC "MACOSX")
 	target_compile_definitions(SensorCal PUBLIC "GL_SILENCE_DEPRECATION")
+
+	if(CMAKE_BUILD_TYPE STREQUAL "Release")
+		set(ENTITLEMENTS ${CMAKE_CURRENT_SOURCE_DIR}/entitlements-release.plist)
+	else()
+		set(ENTITLEMENTS ${CMAKE_CURRENT_SOURCE_DIR}/entitlements-debug.plist)
+	endif()
+
+	add_custom_command(TARGET SensorCal POST_BUILD
+		COMMAND codesign -s - --entitlements ${ENTITLEMENTS} --force $<TARGET_BUNDLE_DIR:SensorCal>
+		COMMENT "Ad-hoc signing SensorCal with ${ENTITLEMENTS}"
+	)
 elseif(WIN32)
 	message("[SensorCal] building for windows")
     target_sources(SensorCal PRIVATE main.exe.manifest)

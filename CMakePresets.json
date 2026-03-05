@@ -2,22 +2,69 @@
   "version": 3,
   "configurePresets": [
     {
-      "name": "default",
-      "binaryDir": "${sourceDir}/build",
+      "name": "release",
+      "displayName": "Release",
+      "binaryDir": "${sourceDir}/build/release",
       "generator": "Ninja",
-      "description": "run `cmake --preset default` once to configure"
+      "description": "Release: for customers",
+      "cacheVariables": {
+          "CMAKE_BUILD_TYPE": "Release",
+          "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "dev",
+      "displayName": "Development",
+      "binaryDir": "${sourceDir}/build/dev",
+      "generator": "Ninja",
+      "description": "Development: fast, but debuggable",
+      "cacheVariables": {
+          "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+          "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "debug",
+      "displayName": "Debug",
+      "binaryDir": "${sourceDir}/build/debug",
+      "generator": "Ninja",
+      "description": "Debug: full debugging, but slow",
+      "cacheVariables": {
+          "CMAKE_BUILD_TYPE": "Debug",
+          "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
     }
   ],
   "buildPresets": [
     {
-      "name": "default",
-      "configurePreset": "default"
+      "name": "release",
+      "configurePreset": "release"
+    },
+    {
+      "name": "dev",
+      "configurePreset": "dev"
+    },
+    {
+      "name": "debug",
+      "configurePreset": "debug"
+    },
+    {
+      "name": "run-r",
+      "configurePreset": "release",
+      "targets": ["run"],
+      "description": "run `cmake --build --preset run-r` to build&run (preset 'release' will just build)"
     },
     {
       "name": "run",
-      "configurePreset": "default",
+      "configurePreset": "dev",
       "targets": ["run"],
-      "description": "run `cmake --build --preset run` build+run (preset 'default' will just build)"
+      "description": "run `cmake --build --preset run` to build&run (preset 'dev' will just build)"
+    },
+    {
+      "name": "run-d",
+      "configurePreset": "debug",
+      "targets": ["run"],
+      "description": "run `cmake --build --preset run-d` to build&run (preset 'debug' will just build)"
     }
   ]
 }

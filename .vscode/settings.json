@@ -1,4 +1,15 @@
 {
+    "cmake.buildBeforeRun": true,
+    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+
+    // lldb-dap is provided by msft's LLDB DAP plugin.
+    //  https://marketplace.visualstudio.com/items?itemName=llvm-vs-code-extensions.lldb-dap
+    // however the lldb-dap app provided by nix is not compatible with vscode's extension.
+    // so we choose to point directly at xcode's version.
+    // use `xcrun -f lldb-dap` to get the path.
+
+    "lldb-dap.executable-path": "/Applications/Xcode.app/Contents/Developer/usr/bin/lldb-dap",
+
     "[cpp]": {
         "editor.defaultFormatter": "ms-vscode.cpptools",
         "editor.tabSize": 4,
