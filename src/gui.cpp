@@ -124,7 +124,7 @@ MyFrame::MyFrame(wxWindow *parent, wxWindowID id, const wxString &title,
 	leftsizer->Add(vsizer, 0, wxALL, 8);
 	text = new wxStaticText(panel, wxID_ANY, "Port");
 	vsizer->Add(text, 0, wxTOP|wxBOTTOM, 4);
-	m_port_list = new wxComboBox(panel, ID_PORTLIST, "",
+	m_port_list = new wxOwnerDrawnComboBox(panel, ID_PORTLIST, "",
 		wxDefaultPosition, wxDefaultSize, 0, NULL, wxCB_READONLY);
 	m_port_list->Append("(none)");
 	m_port_list->Append(SAMPLE_PORT_NAME); // never seen, only for initial size
@@ -359,16 +359,34 @@ void MyFrame::OnShowMenu(wxMenuEvent &event)
 	menu->UpdateUI();
 }
 
+int NWidthInDc(const wxClientDC & dc, const wxString & str)
+{
+	int nWidth = 0;
+	dc.GetTextExtent(str, &nWidth, nullptr);
+
+	return nWidth;
+}
+
 void MyFrame::OnShowPortList(wxCommandEvent& event)
 {
 	//printf("OnShowPortList\n");
 	m_port_list->Clear();
 	m_port_list->Append("(none)");
-	wxArrayString list = serial_port_list();
-	int num = list.GetCount();
-	for (int i=0; i < num; i++) {
-		m_port_list->Append(list[i]);
-	}
+
+    wxClientDC dc(m_port_list);
+    dc.SetFont(m_port_list->GetFont());
+
+	int nWidthMax = NWidthInDc(dc, m_port_list->GetString(0));
+
+    for (const wxString& strPort : serial_port_list())
+    {
+        m_port_list->Append(strPort);
+
+        nWidthMax = wxMax(nWidthMax, NWidthInDc(dc, strPort));
+    }
+
+    static const int s_dxPadding = 20;
+    m_port_list->SetPopupMinWidth(nWidthMax + s_dxPadding);
 }
 
 

@@ -9,6 +9,7 @@
 #include "wx/wfstream.h"
 #include "wx/zstream.h"
 #include "wx/txtstrm.h"
+#include <wx/odcombo.h>
 #if defined(__WXMAC__) || defined(__WXCOCOA__)
 #ifdef __DARWIN__
 #include <OpenGL/gl.h>
@@ -81,7 +82,7 @@ private:
 	wxButton *m_button_sendcal;
 	wxStaticBitmap *m_confirm_icon;
 	wxMenu *m_port_menu;
-	wxComboBox *m_port_list;
+	wxOwnerDrawnComboBox *m_port_list; // switched from wxComboBox to get SetPopupMinWidth()
 	wxMenu *m_sendcal_menu;
 	void OnSendCal(wxCommandEvent &event);
 	void OnClear(wxCommandEvent &event);
