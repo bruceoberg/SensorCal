@@ -4,3 +4,6 @@
 [submodule "vendor/image2wx"]
 	path = vendor/image2wx
 	url = git@github.com:bruceoberg/image2wx.git
+[submodule "vendor/Fusion"]
+	path = vendor/Fusion
+	url = git@github.com:xioTechnologies/Fusion.git
