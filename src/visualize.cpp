@@ -1,6 +1,6 @@
 #include "imuread.h"
 
-static void quad_to_rotation(const libcalib::Quaternion_t *quat, float (& rmatrix)[9])
+static void quad_to_rotation(const libcalib::SQuat *quat, float (& rmatrix)[9])
 {
 	float qw = quat->q0;
 	float qx = quat->q1;
@@ -17,7 +17,7 @@ static void quad_to_rotation(const libcalib::Quaternion_t *quat, float (& rmatri
 	rmatrix[8] = 1.0f  - 2.0f * qx * qx - 2.0f * qy * qy;
 }
 
-static void rotate(const libcalib::Point_t *in, libcalib::Point_t *out, const float (& rmatrix)[9])
+static void rotate(const libcalib::SPoint *in, libcalib::SPoint *out, const float (& rmatrix)[9])
 {
 	out->x = in->x * rmatrix[0] + in->y * rmatrix[1] + in->z * rmatrix[2];
 	out->y = in->x * rmatrix[3] + in->y * rmatrix[4] + in->z * rmatrix[5];
@@ -40,7 +40,7 @@ void display_callback()
 	float yoff = 0.0;
 	float zoff = -7.0;
 
-	libcalib::Quaternion_t orientation = calib.m_current_orientation;
+	libcalib::SQuat orientation = calib.m_current_orientation;
 	
 	// TODO: this almost but doesn't perfectly seems to get the
 	//  real & screen axes in sync....
@@ -56,8 +56,8 @@ void display_callback()
 	for (int i = 0; i < calib.m_magcal.m_cSamp; ++i)
 	{
 		const auto & samp = calib.m_magcal.m_aSamp[i];
-		const libcalib::Point_t * pBc = &samp.m_pntCal;
-		libcalib::Point_t draw;
+		const libcalib::SPoint * pBc = &samp.m_pntCal;
+		libcalib::SPoint draw;
 
 		rotate(pBc, &draw, rotation);
 
