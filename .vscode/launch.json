@@ -8,7 +8,6 @@
             "type": "lldb-dap",
             "request": "launch",
             "program": "${command:cmake.launchTargetPath}",
-            // "program": "/Users/bruceoberg/code/SensorCal/build/debug/src/SensorCal.app/Contents/MacOS/SensorCal",
             "cwd": "${workspaceFolder}"
         },
         {
