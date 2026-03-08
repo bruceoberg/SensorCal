@@ -3,8 +3,6 @@
 
 #include "image2wx/image2wx.h"
 
-libcalib::Calibrator calib;
-
 
 wxString port_name;
 static bool show_calibration_confirmed = false;
@@ -83,6 +81,8 @@ MyFrame::MyFrame(wxWindow *parent, wxWindowID id, const wxString &title,
     const wxPoint &position, const wxSize& size, long style) :
     wxFrame( parent, id, title, position, size, style )
 {
+	libcalib::Calibrator & calib = libcalib::Calibrator::Ensure();
+
 	wxPanel *panel;
 	wxMenuBar *menuBar;
 	wxMenu *menu;
@@ -252,6 +252,8 @@ MyFrame::MyFrame(wxWindow *parent, wxWindowID id, const wxString &title,
 
 void MyFrame::OnTimer(wxTimerEvent &event)
 {
+	libcalib::Calibrator & calib = libcalib::Calibrator::Ensure();
+
 	//printf("OnTimer\n");
 	if (port_is_open()) {
 		read_serial_data();
@@ -309,12 +311,16 @@ void MyFrame::OnTimer(wxTimerEvent &event)
 
 void MyFrame::OnClear(wxCommandEvent &event)
 {
+	libcalib::Calibrator & calib = libcalib::Calibrator::Ensure();
+
 	//printf("OnClear\n");
 	calib.reset();
 }
 
 void MyFrame::OnSendCal(wxCommandEvent &event)
 {
+	//libcalib::Calibrator & calib = libcalib::Calibrator::Ensure();
+
 	//printf("OnSendCal\n");
 	//const auto & V = calib.m_magcal.m_cal_V;
 	//const auto & invW = calib.m_magcal.m_cal_invW;
@@ -392,6 +398,8 @@ void MyFrame::OnShowPortList(wxCommandEvent& event)
 
 void MyFrame::OnPortMenu(wxCommandEvent &event)
 {
+	libcalib::Calibrator & calib = libcalib::Calibrator::Ensure();
+
         int id = event.GetId();
         wxString name = m_port_menu->FindItem(id)->GetItemLabelText();
 
@@ -409,6 +417,8 @@ void MyFrame::OnPortMenu(wxCommandEvent &event)
 
 void MyFrame::OnPortList(wxCommandEvent& event)
 {
+	libcalib::Calibrator & calib = libcalib::Calibrator::Ensure();
+
 	int selected = m_port_list->GetSelection();
 	if (selected == wxNOT_FOUND) return;
 	wxString name = m_port_list->GetString(selected);

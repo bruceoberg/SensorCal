@@ -31,6 +31,8 @@ static GLuint spherelowreslist;
 
 void display_callback()
 {
+	libcalib::Calibrator & calib = libcalib::Calibrator::Ensure();
+
 	calib.m_magcal.ensure_quality();
 
 	float xscale = 0.05;

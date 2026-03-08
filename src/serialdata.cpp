@@ -107,6 +107,8 @@ static int ascii_parse(const unsigned char *data, int len)
 				ascii_neg = 0;
 				ascii_count = 0;
 			} else if (*p == 13) {
+				libcalib::Calibrator & calib = libcalib::Calibrator::Ensure();
+
 				//printf("ascii_parse newline\n");
 				if (ascii_neg) ascii_num = -ascii_num;
 				if (((int16_t)ascii_num) != ascii_num) goto fail;
@@ -552,6 +554,8 @@ static uint8_t* copy_lsb_first(uint8_t* dst, float f)
 
 int send_calibration()
 {
+	libcalib::Calibrator & calib = libcalib::Calibrator::Ensure();
+
 	const auto & V = calib.m_magcal.m_cal_V;
 	const auto & invW = calib.m_magcal.m_cal_invW;
 	const auto & B = calib.m_magcal.m_cal_B;

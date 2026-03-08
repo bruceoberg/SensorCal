@@ -31,8 +31,6 @@
 
 #include "libcalib.h"
 
-extern libcalib::Calibrator calib;
-
 #if defined(LINUX)
   #define PORT "/dev/ttyACM0"
 #elif defined(WINDOWS)
