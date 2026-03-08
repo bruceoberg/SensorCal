@@ -33,7 +33,7 @@ void display_callback()
 {
 	libcalib::Calibrator & calib = libcalib::Calibrator::Ensure();
 
-	calib.m_magcal.ensure_quality();
+	calib.m_magcal.EnsureQuality();
 
 	float xscale = 0.05;
 	float yscale = 0.05;
@@ -52,7 +52,30 @@ void display_callback()
 	quad_to_rotation(&orientation, rotation);
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glColor3f(1, 0, 0);	// set current color to red
+
+	if (calib.m_magcal.AreErrorsOk())
+	{
+		glColor3f(0, 1, 0);	// green
+	}
+	else
+	{
+		switch (calib.m_magcal.m_solver)
+		{
+		case libcalib::MagCalibrator::SOLVER_4Inv:
+			glColor3f(1, 1, 0);	// yellow
+			break;
+		case libcalib::MagCalibrator::SOLVER_7Eig:
+			glColor3f(1, 0, 1);	// magenta
+			break;
+		case libcalib::MagCalibrator::SOLVER_10Eig:
+			glColor3f(0, 1, 1);	// cyan
+			break;
+		default:
+			glColor3f(1, 0, 0);	// red
+			break;
+		}
+	}
+
 	glLoadIdentity();
 	
 	for (int i = 0; i < calib.m_magcal.m_cSamp; ++i)
