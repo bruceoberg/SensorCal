@@ -48,8 +48,10 @@ Variables follow the pattern: `[scope][prefix][Tag][Detail][Suffix]`
 |-----|------|
 | `b` | byte (u8) |
 | `ch` | char |
+| `wch` | wide char (wchar_t aka WCH) |
 | `str` | string |
-| `g` | float |
+| `g` | float (generic or unknown) |
+| `s` | float (scalar or x/y/z component) |
 | `u` | float 0..1 |
 | `su` | float -1..1 |
 | `f` | bool |
@@ -68,6 +70,7 @@ Variables follow the pattern: `[scope][prefix][Tag][Detail][Suffix]`
 | Tag | Type |
 |-----|------|
 | `l` | list (Python) |
+| `a` | raw array (C/C++) |
 | `ary` | templated array (C++) |
 | `mp` | dict/map with well-defined keys (typically string→value) |
 | `obj` | opaque dict (slurped from JSON/YAML) |
@@ -77,9 +80,23 @@ Variables follow the pattern: `[scope][prefix][Tag][Detail][Suffix]`
 | `sl` | singly-linked list |
 | `hash` | hash table |
 
-**Capitalization rule:** When multiple prefixes stack, capitalize only the first letter of each additional tag.
-- Array of pointers: `arypFoo`
-- Array of arrays: `aryaryFoo`
+**Capitalization rule:** Use camelCase to separate prefixes, tags, and suffixes within a name.
+Capitalize the first letter of each tag/suffix after the initial prefix(es).
+
+Examples with single-char tags:
+- Array of floats: `aG` (not `ag`)
+- Index into float array: `iG` (not `ig`)
+- Count of floats: `cG` (not `cg`)
+- Pointer to char: `pCh` (not `pch`)
+
+Examples with multi-char tags:
+- Array of chars: `aChLine` (not `achLine`)
+- Count of chars: `cChLine` (not `cchLine`)
+- Pointer to char at end: `pChEnd` (not `pchEnd`)
+
+Examples with container prefixes:
+- Array of pointers: `aPFoo`
+- Array of arrays: `aAFoo`
 - Map from string to int: `mpStrInt`
 - Map from enum to string: `mpEnumStr`
 - Set of strings: `setStr`

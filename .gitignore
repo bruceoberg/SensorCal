@@ -15,3 +15,7 @@ _deps
 build
 out
 build-*
+
+# Keep .claude/settings.json if it has intentional project config
+.claude/*
+!.claude/settings.json
