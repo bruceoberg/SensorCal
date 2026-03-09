@@ -9,6 +9,7 @@ pkgs.mkShell
     pkgs.ninja        # the build system cmake will use (ninja is effectively make++)
     pkgs.wxGTK32      # wxwidgets
     pkgs.pkg-config   # let's cmake find installed libs (eg wx)
+    pkgs.claude-code
   ];
 
   shellHook = ''
