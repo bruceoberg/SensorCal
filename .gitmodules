@@ -7,3 +7,6 @@
 [submodule "vendor/Fusion"]
 	path = vendor/Fusion
 	url = git@github.com:xioTechnologies/Fusion.git
+[submodule "vendor/serial_cpp"]
+	path = vendor/serial_cpp
+	url = https://github.com/gbionics/serial_cpp.git
