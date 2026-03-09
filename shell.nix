@@ -10,6 +10,7 @@ pkgs.mkShell
     pkgs.wxGTK32      # wxwidgets
     pkgs.pkg-config   # let's cmake find installed libs (eg wx)
     pkgs.claude-code
+    pkgs.imagemagick
   ];
 
   shellHook = ''
