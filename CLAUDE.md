@@ -31,12 +31,18 @@ must reflect that ambition.
 
 ```
 SensorCal/
-├── src/                  # C++ source and headers
+├── src/
+│   ├── gui.cpp/h         # wxWidgets UI
+│   ├── lineparser.cpp/h  # CLineParser — serial line parsing
+│   ├── serialdata.cpp    # serial I/O, calibration send
+│   ├── visualize.cpp     # OpenGL sphere rendering
+│   └── ...
 ├── vendor/
 │   ├── libcalib/         # git submodule — calibration library (see vendor/libcalib/CLAUDE.md)
-│   └── Fusion/           # git submodule — xioTechnologies AHRS
+│   ├── Fusion/           # git submodule — xioTechnologies AHRS (libcalib dependency)
+│   └── serial_cpp/       # git submodule — gbionics/serial_cpp
 ├── CMakeLists.txt
-├── CMakePresets.json     # named presets: debug, relwithdebinfo, release
+├── CMakePresets.json     # named presets: debug, dev, release
 ├── CLAUDE.md             # this file
 └── CLAUDE-coding.md      # coding style reference
 ```
@@ -64,23 +70,17 @@ The codebase is split between:
 When rewriting legacy C, bring it fully up to the coding standard. Do not blend styles
 within a file.
 
-### serialdata.cpp — the main problem file
+### serialdata.cpp
 
-`src/serialdata.cpp` contains several things that need replacing:
+`src/serialdata.cpp` handles serial I/O and calibration packet sending.
 
-**`ascii_parse()`** — a monolithic C function with:
-- Hand-rolled character-by-character keyword matching instead of string comparison
-- Hand-rolled integer and float parsing instead of `strtol`/`strtof`
-- `goto fail` error handling
-- Static state variables — not reentrant, not testable
-- Only handles `Raw:` lines — predates the `Uni:` format entirely
+**Serial I/O** — uses `gbionics/serial_cpp` (vendored at `vendor/serial_cpp`), a cross-platform
+library with port enumeration support. The library throws exceptions; `serialdata.cpp` catches
+them at the API boundary and converts to return codes.
 
-**Serial port I/O** — raw platform split:
-- `#if defined(LINUX) || defined(MACOSX)` — POSIX termios
-- `#elif defined(WINDOWS)` — Win32 OVERLAPPED I/O
-- No port enumeration — caller must supply port name, hence the hostile dropdown UI
+**Line parsing** — delegated to `CLineParser` (see `src/lineparser.cpp`).
 
-**`send_calibration()`**:
+**`send_calibration()`** — still has known issues:
 - Sends `0.0f` for accelerometer and gyro offsets — placeholders, not real calibration
 - `cal_data_sent` index mapping is hand-counted with magic number comments like `//10`
 - `invW` indices in `cal_data_sent` don't match the binary packet ordering
@@ -93,22 +93,26 @@ The Feather (running kitelite or Adafruit imucal firmware) sends two line types 
 ```
 Raw:<ax>,<ay>,<az>,<gx>,<gy>,<gz>,<mx>,<my>,<mz>\r\n
 ```
-- accel: m/s² × constant → truncated int16 (lossy)
-- gyro: rad/s × DEGREES_PER_RADIAN × 16 → truncated int16 (lossy)
-- mag: µT × 10 → truncated int16 (~0.1 µT resolution, lossy)
+Encoding (see `imucal.ino`):
+- accel: g × 8192 → int16 (decode: × 1/8192 → g)
+- gyro: deg/s × 16 → int16 (decode: × 1/16 → deg/s)
+- mag: µT × 10 → int16 (decode: × 1/10 → µT)
 
 **`Uni:` line** — 9 comma-separated floats, CR-terminated (full precision):
 ```
 Uni:<ax>,<ay>,<az>,<gx>,<gy>,<gz>,<mx>,<my>,<mz>\r\n
 ```
-- accel: m/s², gyro: rad/s, mag: µT — all full float precision
+- accel: m/s², gyro: rad/s, mag: µT — SI units
 
-**Parser requirements:**
-- Prefer `Uni:` — full float precision, no lossy scaling
-- Accept `Raw:` as fallback for compatibility with older firmware
-- Also handle `Cal1:` and `Cal2:` lines (calibration echo/confirm from device)
-- Parse with a clean C++ class: per-instance state (not statics), line-buffered,
-  using `strtof`/`strtol` for number parsing
+**Unit mismatch:** The `Raw:` and `Uni:` lines use different units for accel (g vs m/s²)
+and gyro (deg/s vs rad/s). This is a quirk of the MotionCal-compatible protocol.
+`CLineParser` normalizes both to (g, deg/s, µT) for libcalib, which expects deg/s for gyro.
+
+**Parser implementation:** `CLineParser` in `src/lineparser.cpp`:
+- Line-buffered, per-instance state (no statics), fully reentrant
+- Uses `strtof`/`strtol` for number parsing
+- Handles `Raw:`, `Uni:`, `Cal1:`, and `Cal2:` line types
+- Outputs `SSample` struct with values in (g, deg/s, µT)
 
 **Send protocol** — binary packet (68 bytes) sent to device:
 - 2-byte signature (0x75, 0x54)
@@ -121,18 +125,16 @@ Uni:<ax>,<ay>,<az>,<gx>,<gy>,<gz>,<mx>,<my>,<mz>\r\n
 
 ## Cross-platform serial library
 
-The raw POSIX/Win32 serial code in `serialdata.cpp` must be replaced with a cross-platform
-library. The choice is open — evaluate candidates before committing to one. Criteria:
+Serial I/O uses **gbionics/serial_cpp** (vendored at `vendor/serial_cpp`), a fork of
+wjwwood/serial with the catkin/ROS dependency removed. Features:
 
-- Cross-platform: macOS, Windows, Linux
-- No ROS/catkin dependency (even if optional)
-- CMake-friendly and easy to vendor as a git submodule
-- Actively maintained
-- Simple enough that Adafruit's audience could understand and contribute to it
+- Cross-platform: macOS (IOKit), Windows (setupapi), Linux
+- Port enumeration built-in (needed for wizard auto-detect)
+- CMake-native, easy to vendor as a git submodule
+- PySerial-like API (familiar to Adafruit audience)
 
-Candidates worth evaluating: **serialib** (single `.h`/`.cpp`, minimal, no dependencies),
-**wjwwood/serial** (widely used, CMake-native — confirm catkin is truly optional in a
-plain CMake build before rejecting it). Propose a choice with rationale before implementing.
+Note: The library uses exceptions for error handling. `serialdata.cpp` catches these at
+the API boundary and converts to return codes to match SensorCal's no-exceptions convention.
 
 ## The wizard UI vision
 
@@ -168,9 +170,9 @@ See `CLAUDE-coding.md` in the repo root for full reference. Key rules:
 ## Vendor submodules
 
 All vendored dependencies live under `vendor/`:
-- `vendor/libcalib` — calibration library
+- `vendor/libcalib` — calibration library (see `vendor/libcalib/CLAUDE.md`)
 - `vendor/Fusion` — xioTechnologies/Fusion (dependency of libcalib, not used directly)
-- `vendor/serial` — cross-platform serial I/O (library TBD, see above)
+- `vendor/serial_cpp` — gbionics/serial_cpp, cross-platform serial I/O
 
 ## CI / release goals
 

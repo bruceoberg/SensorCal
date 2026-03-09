@@ -1,4 +1,4 @@
-set(SRCS gui.cpp gui.h imuread.h portlist.cpp serialdata.cpp visualize.cpp)
+set(SRCS gui.cpp gui.h imuread.h lineparser.cpp lineparser.h portlist.cpp serialdata.cpp visualize.cpp)
 set(PNGS checkempty.png checkemptygray.png checkgreen.png)
 
 find_package(OpenGL REQUIRED)
@@ -44,4 +44,4 @@ else()
 	target_compile_definitions(SensorCal PUBLIC "LINUX")
 endif()
 
-target_link_libraries(SensorCal PUBLIC ${wxWidgets_LIBRARIES} ${OPENGL_LIBRARY} libcalib image2wx)
+target_link_libraries(SensorCal PUBLIC ${wxWidgets_LIBRARIES} ${OPENGL_LIBRARY} libcalib image2wx serial_cpp)

@@ -1,5 +1,10 @@
 #include "imuread.h"
+#include "lineparser.h"
+#include <serial_cpp/serial.h>
+#include <algorithm>
 
+static serial_cpp::Serial g_serial;
+static CLineParser g_linep;
 
 void print_data(const char *name, const unsigned char *data, int len)
 {
@@ -12,465 +17,101 @@ void print_data(const char *name, const unsigned char *data, int len)
 	printf("\n");
 }
 
-#define ASCII_STATE_WORD  0
-#define ASCII_STATE_RAW   1
-#define ASCII_STATE_CAL1  2
-#define ASCII_STATE_CAL2  3
-
-static int ascii_parse(const unsigned char *data, int len)
-{
-	static int ascii_state=ASCII_STATE_WORD;
-	static int ascii_num=0, ascii_neg=0, ascii_count=0;
-	static int16_t ascii_raw_data[9];
-	static float ascii_cal_data[10];
-	static unsigned int ascii_raw_data_count=0;
-	const char *p, *end;
-	int ret=0;
-
-	//print_data("ascii_parse", data, len);
-	end = (const char *)(data + len);
-	for (p = (const char *)data ; p < end; p++) {
-		if (ascii_state == ASCII_STATE_WORD) {
-			if (ascii_count == 0) {
-				if (*p == 'R') {
-					ascii_num = ASCII_STATE_RAW;
-					ascii_count = 1;
-				} else if (*p == 'C') {
-					ascii_num = ASCII_STATE_CAL1;
-					ascii_count = 1;
-				}
-			} else if (ascii_count == 1) {
-				if (*p == 'a') {
-					ascii_count = 2;
-				} else {
-					ascii_num = 0;
-					ascii_count = 0;
-				}
-			} else if (ascii_count == 2) {
-				if (*p == 'w' && ascii_num == ASCII_STATE_RAW) {
-					ascii_count = 3;
-				} else if (*p == 'l' && ascii_num == ASCII_STATE_CAL1) {
-					ascii_count = 3;
-				} else {
-					ascii_num = 0;
-					ascii_count = 0;
-				}
-			} else if (ascii_count == 3) {
-				if (*p == ':' && ascii_num == ASCII_STATE_RAW) {
-					ascii_state = ASCII_STATE_RAW;
-					ascii_raw_data_count = 0;
-					ascii_num = 0;
-					ascii_count = 0;
-				} else if (*p == '1' && ascii_num == ASCII_STATE_CAL1) {
-					ascii_count = 4;
-				} else if (*p == '2' && ascii_num == ASCII_STATE_CAL1) {
-					ascii_num = ASCII_STATE_CAL2;
-					ascii_count = 4;
-				} else {
-					ascii_num = 0;
-					ascii_count = 0;
-				}
-			} else if (ascii_count == 4) {
-				if (*p == ':' && ascii_num == ASCII_STATE_CAL1) {
-					ascii_state = ASCII_STATE_CAL1;
-					ascii_raw_data_count = 0;
-					ascii_num = 0;
-					ascii_count = 0;
-				} else if (*p == ':' && ascii_num == ASCII_STATE_CAL2) {
-					ascii_state = ASCII_STATE_CAL2;
-					ascii_raw_data_count = 0;
-					ascii_num = 0;
-					ascii_count = 0;
-				} else {
-					ascii_num = 0;
-					ascii_count = 0;
-				}
-			} else {
-				goto fail;
-			}
-		} else if (ascii_state == ASCII_STATE_RAW) {
-			if (*p == '-') {
-				//printf("ascii_parse negative\n");
-				if (ascii_count > 0) goto fail;
-				ascii_neg = 1;
-			} else if (isdigit(*p)) {
-				//printf("ascii_parse digit\n");
-				ascii_num = ascii_num * 10 + *p - '0';
-				ascii_count++;
-			} else if (*p == ',') {
-				//printf("ascii_parse comma, %d\n", ascii_num);
-				if (ascii_neg) ascii_num = -ascii_num;
-				if (((int16_t)ascii_num) != ascii_num) goto fail;
-				if (ascii_raw_data_count >= 8) goto fail;
-				ascii_raw_data[ascii_raw_data_count++] = ascii_num;
-				ascii_num = 0;
-				ascii_neg = 0;
-				ascii_count = 0;
-			} else if (*p == 13) {
-				libcalib::Calibrator & calib = libcalib::Calibrator::Ensure();
-
-				//printf("ascii_parse newline\n");
-				if (ascii_neg) ascii_num = -ascii_num;
-				if (((int16_t)ascii_num) != ascii_num) goto fail;
-				if (ascii_raw_data_count != 8) goto fail;
-				ascii_raw_data[ascii_raw_data_count] = ascii_num;
-				calib.add_raw_data(ascii_raw_data);
-				ret = 1;
-				ascii_raw_data_count = 0;
-				ascii_num = 0;
-				ascii_neg = 0;
-				ascii_count = 0;
-				ascii_state = ASCII_STATE_WORD;
-			} else if (*p == 10) {
-			} else {
-				goto fail;
-			}
-		} else if (ascii_state == ASCII_STATE_CAL1 || ascii_state == ASCII_STATE_CAL2) {
-			if (*p == '-') {
-				//printf("ascii_parse negative\n");
-				if (ascii_count > 0) goto fail;
-				ascii_neg = 1;
-			} else if (isdigit(*p)) {
-				//printf("ascii_parse digit\n");
-				ascii_num = ascii_num * 10 + *p - '0';
-				ascii_count++;
-			} else if (*p == '.') {
-				//printf("ascii_parse decimal, %d\n", ascii_num);
-				if (ascii_raw_data_count > 9) goto fail;
-				ascii_cal_data[ascii_raw_data_count] = (float)ascii_num;
-				ascii_num = 0;
-				ascii_count = 0;
-			} else if (*p == ',') {
-				//printf("ascii_parse comma, %d\n", ascii_num);
-				if (ascii_raw_data_count > 9) goto fail;
-				ascii_cal_data[ascii_raw_data_count] +=
-					(float)ascii_num / powf(10.0f, ascii_count);
-				if (ascii_neg) ascii_cal_data[ascii_raw_data_count] *= -1.0f;
-				ascii_raw_data_count++;
-				ascii_num = 0;
-				ascii_neg = 0;
-				ascii_count = 0;
-			} else if (*p == 13) {
-				//printf("ascii_parse newline\n");
-				if ((ascii_state == ASCII_STATE_CAL1 && ascii_raw_data_count != 9)
-				 || (ascii_state == ASCII_STATE_CAL2 && ascii_raw_data_count != 8))
-					goto fail;
-				ascii_cal_data[ascii_raw_data_count] +=
-					(float)ascii_num / powf(10.0f, ascii_count);
-				if (ascii_neg) ascii_cal_data[ascii_raw_data_count] *= -1.0f;
-				if (ascii_state == ASCII_STATE_CAL1) {
-					cal1_data(ascii_cal_data);
-				} else if (ascii_state == ASCII_STATE_CAL2) {
-					cal2_data(ascii_cal_data);
-				}
-				ret = 1;
-				ascii_raw_data_count = 0;
-				ascii_num = 0;
-				ascii_neg = 0;
-				ascii_count = 0;
-				ascii_state = ASCII_STATE_WORD;
-			} else if (*p == 10) {
-			} else {
-				goto fail;
-			}
-		}
-	}
-	return ret;
-fail:
-	//printf("ascii FAIL\n");
-	ascii_state = ASCII_STATE_WORD;
-	ascii_raw_data_count = 0;
-	ascii_num = 0;
-	ascii_neg = 0;
-	ascii_count = 0;
-	return 0;
-}
-
-
-#if defined(LINUX) || defined(MACOSX)
-
-static int portfd=-1;
-
 int port_is_open()
 {
-	if (portfd > 0) return 1;
-	return 0;
+	return g_serial.isOpen() ? 1 : 0;
 }
 
-int open_port(const char *name)
+int open_port(const char * pchName)
 {
-	struct termios termsettings;
-	int r;
-
-	portfd = open(name, O_RDWR | O_NONBLOCK);
-	if (portfd < 0) return 0;
-	r = tcgetattr(portfd, &termsettings);
-	if (r < 0) {
-		close_port();
+	try
+	{
+		g_serial.setPort(pchName);
+		g_serial.setBaudrate(115200);
+		g_serial.setTimeout(serial_cpp::Timeout::simpleTimeout(100));
+		g_serial.open();
+		g_linep.Reset();
+		return g_serial.isOpen() ? 1 : 0;
+	}
+	catch (...)
+	{
 		return 0;
 	}
-	cfmakeraw(&termsettings);
-	cfsetspeed(&termsettings, B115200);
-	r = tcsetattr(portfd, TCSANOW, &termsettings);
-	if (r < 0) {
-		close_port();
-		return 0;
-	}
-	return 1;
 }
 
 int read_serial_data()
 {
-	unsigned char buf[256];
-	static int nodata_count=0;
-	int n;
+	if (!g_serial.isOpen())
+		return -1;
 
-	if (portfd < 0) return -1;
-	while (1) {
-		n = read(portfd, buf, sizeof(buf));
-		if (n > 0 && n <= int(sizeof(buf))) {
-			ascii_parse(buf, n);
-			nodata_count = 0;
-			return n;
-		} else if (n == 0) {
-			if (++nodata_count > 6) {
-				close_port();
-				nodata_count = 0;
-				close_port();
-				return -1;
-			}
+	try
+	{
+		size_t cBAvail = g_serial.available();
+		if (cBAvail == 0)
 			return 0;
-		} else {
-			n = errno;
-			if (n == EAGAIN) {
-				return 0;
-			} else if (n == EINTR) {
-			} else {
-				close_port();
-				return -1;
-			}
+
+		uint8_t aBuf[256];
+		size_t cB = g_serial.read(aBuf, std::min(cBAvail, sizeof(aBuf)));
+		if (cB == 0)
+			return 0;
+
+		CLineParser::LINETYPE lt = g_linep.LinetypeFeedBytes(aBuf, static_cast<int>(cB));
+
+		if (lt == CLineParser::LINETYPE_Uni) // skipping raw for now || lt == CLineParser::LINETYPE_Raw)
+		{
+			libcalib::Calibrator & calib = libcalib::Calibrator::Ensure();
+
+			calib.AddSample(g_linep.Samp());
 		}
+		else if (lt == CLineParser::LINETYPE_Cal1)
+		{
+			cal1_data(g_linep.PGCal());
+		}
+		else if (lt == CLineParser::LINETYPE_Cal2)
+		{
+			cal2_data(g_linep.PGCal());
+		}
+
+		return static_cast<int>(cB);
+	}
+	catch (...)
+	{
+		close_port();
+		return -1;
 	}
 }
 
-int write_serial_data(const void *ptr, int len)
+int write_serial_data(const void * pv, int cb)
 {
-	int n, written=0;
-	fd_set wfds;
-	struct timeval tv;
+	if (!g_serial.isOpen())
+		return -1;
 
-	//printf("Write %d\n", len);
-	if (portfd < 0) return -1;
-	while (written < len) {
-		n = write(portfd, (const char *)ptr + written, len - written);
-		if (n < 0 && (errno == EAGAIN || errno == EINTR)) n = 0;
-		//printf("Write, n = %d\n", n);
-		if (n < 0) return -1;
-		if (n > 0) {
-			written += n;
-		} else {
-			tv.tv_sec = 0;
-			tv.tv_usec = 5000;
-			FD_ZERO(&wfds);
-			FD_SET(portfd, &wfds);
-			n = select(portfd+1, NULL, &wfds, NULL, &tv);
-			if (n < 0 && errno == EINTR) n = 1;
-			if (n <= 0) return -1;
-		}
+	try
+	{
+		return static_cast<int>(g_serial.write(
+			static_cast<const uint8_t *>(pv),
+			static_cast<size_t>(cb)));
 	}
-	return written;
+	catch (...)
+	{
+		return -1;
+	}
 }
 
 void close_port()
 {
-	if (portfd >= 0) {
-		close(portfd);
-		portfd = -1;
+	try
+	{
+		if (g_serial.isOpen())
+			g_serial.close();
+	}
+	catch (...)
+	{
+		// ignore close errors
 	}
 }
 
-#elif defined(WINDOWS)
-
-static HANDLE port_handle=INVALID_HANDLE_VALUE;
-
-int port_is_open()
-{
-	if (port_handle == INVALID_HANDLE_VALUE) return 0;
-	return 1;
-}
-
-int open_port(const char *name)
-{
-	COMMCONFIG port_cfg;
-	COMMTIMEOUTS timeouts;
-	DWORD len;
-	char buf[64];
-	int n;
-
-	if (strncmp(name, "COM", 3) == 0 && sscanf(name + 3, "%d", &n) == 1) {
-		snprintf(buf, sizeof(buf), "\\\\.\\COM%d", n);
-		name = buf;
-	}
-	port_handle = CreateFileA(name, GENERIC_READ | GENERIC_WRITE,
-		0, 0, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
-	if (port_handle == INVALID_HANDLE_VALUE) {
-		return 0;
-	}
-	len = sizeof(COMMCONFIG);
-	if (!GetCommConfig(port_handle, &port_cfg, &len)) {
-		CloseHandle(port_handle);
-		port_handle = INVALID_HANDLE_VALUE;
-		return 0;
-	}
-	port_cfg.dcb.BaudRate = 115200;
-	port_cfg.dcb.fBinary = TRUE;
-	port_cfg.dcb.fParity = FALSE;
-	port_cfg.dcb.fOutxCtsFlow = FALSE;
-	port_cfg.dcb.fOutxDsrFlow = FALSE;
-	port_cfg.dcb.fDtrControl = DTR_CONTROL_DISABLE;
-	port_cfg.dcb.fDsrSensitivity = FALSE;
-	port_cfg.dcb.fTXContinueOnXoff = TRUE;  // ???
-	port_cfg.dcb.fOutX = FALSE;
-	port_cfg.dcb.fInX = FALSE;
-	port_cfg.dcb.fErrorChar = FALSE;
-	port_cfg.dcb.fNull = FALSE;
-	port_cfg.dcb.fRtsControl = RTS_CONTROL_DISABLE;
-	port_cfg.dcb.fAbortOnError = FALSE;
-	port_cfg.dcb.ByteSize = 8;
-	port_cfg.dcb.Parity = NOPARITY;
-	port_cfg.dcb.StopBits = ONESTOPBIT;
-	if (!SetCommConfig(port_handle, &port_cfg, sizeof(COMMCONFIG))) {
-		CloseHandle(port_handle);
-		port_handle = INVALID_HANDLE_VALUE;
-		return 0;
-	}
-	if (!EscapeCommFunction(port_handle, CLRDTR | CLRRTS)) {
-		CloseHandle(port_handle);
-		port_handle = INVALID_HANDLE_VALUE;
-		return 0;
-	}
-        timeouts.ReadIntervalTimeout            = MAXDWORD;
-        timeouts.ReadTotalTimeoutMultiplier     = 0;
-        timeouts.ReadTotalTimeoutConstant       = 0;
-        timeouts.WriteTotalTimeoutMultiplier    = 0;
-        timeouts.WriteTotalTimeoutConstant      = 0;
-        if (!SetCommTimeouts(port_handle, &timeouts)) {
-		CloseHandle(port_handle);
-		port_handle = INVALID_HANDLE_VALUE;
-		return 0;
-	}
-	if (!EscapeCommFunction(port_handle, SETDTR)) {
-		CloseHandle(port_handle);
-		port_handle = INVALID_HANDLE_VALUE;
-		return 0;
-	}
-	return 1;
-}
-
-int read_serial_data()
-{
-	COMSTAT st;
-	DWORD errmask=0, num_read, num_request;
-	OVERLAPPED ov;
-	unsigned char buf[256];
-	int r;
-
-	if (port_handle == INVALID_HANDLE_VALUE) return -1;
-	while (1) {
-		if (!ClearCommError(port_handle, &errmask, &st)) {
-			r = -1;
-			break;
-		}
-		//printf("Read, %d requested, %lu buffered\n", count, st.cbInQue);
-		if (st.cbInQue <= 0) {
-			r = 0;
-			break;
-		}
-		// now do a ReadFile, now that we know how much we can read
-		// a blocking (non-overlapped) read would be simple, but win32
-		// is all-or-nothing on async I/O and we must have it enabled
-		// because it's the only way to get a timeout for WaitCommEvent
-		if (st.cbInQue < (DWORD)sizeof(buf)) {
-			num_request = st.cbInQue;
-		} else {
-			num_request = (DWORD)sizeof(buf);
-		}
-		ov.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-		if (ov.hEvent == NULL) {
-			close_port();
-			return -1;
-		}
-		ov.Internal = ov.InternalHigh = 0;
-		ov.Offset = ov.OffsetHigh = 0;
-		if (ReadFile(port_handle, buf, num_request, &num_read, &ov)) {
-			// this should usually be the result, since we asked for
-			// data we knew was already buffered
-			//printf("Read, immediate complete, num_read=%lu\n", num_read);
-			r = num_read;
-		} else {
-			if (GetLastError() == ERROR_IO_PENDING) {
-				if (GetOverlappedResult(port_handle, &ov, &num_read, TRUE)) {
-					//printf("Read, delayed, num_read=%lu\n", num_read);
-					r = num_read;
-				} else {
-					//printf("Read, delayed error\n");
-					r = -1;
-				}
-			} else {
-				//printf("Read, error\n");
-				r = -1;
-			}
-		}
-		CloseHandle(ov.hEvent);
-		if (r <= 0) break;
-		ascii_parse(buf, r);
-	}
-	if (r < 0) {
-		CloseHandle(port_handle);
-		port_handle = INVALID_HANDLE_VALUE;
-	}
-        return r;
-}
-
-int write_serial_data(const void *ptr, int len)
-{
-	DWORD num_written;
-	OVERLAPPED ov;
-	int r;
-
-	ov.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-	if (ov.hEvent == NULL) return -1;
-	ov.Internal = ov.InternalHigh = 0;
-	ov.Offset = ov.OffsetHigh = 0;
-	if (WriteFile(port_handle, ptr, len, &num_written, &ov)) {
-		//printf("Write, immediate complete, num_written=%lu\n", num_written);
-		r = num_written;
-	} else {
-		if (GetLastError() == ERROR_IO_PENDING) {
-			if (GetOverlappedResult(port_handle, &ov, &num_written, TRUE)) {
-			//printf("Write, delayed, num_written=%lu\n", num_written);
-			r = num_written;
-			} else {
-				//printf("Write, delayed error\n");
-				r = -1;
-			}
-		} else {
-			//printf("Write, error\n");
-			r = -1;
-		}
-	};
-	CloseHandle(ov.hEvent);
-	return r;
-}
-
-void close_port()
-{
-	CloseHandle(port_handle);
-	port_handle = INVALID_HANDLE_VALUE;
-}
-
-
-#endif
+// --- Calibration send/confirm logic (unchanged) ---
 
 static float cal_data_sent[19];
 static int cal_confirm_needed = 0;

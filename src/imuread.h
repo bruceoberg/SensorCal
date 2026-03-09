@@ -8,13 +8,8 @@
 #include <string.h>
 #include <ctype.h>
 #include <math.h>
-#include <errno.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
+
 #if defined(LINUX)
-  #include <termios.h>
-  #include <unistd.h>
   #include <GL/gl.h>  // sudo apt install mesa-common-dev
   #include <GL/glu.h> // sudo apt install libglu1-mesa-dev freeglut3-dev
 #elif defined(WINDOWS)
@@ -22,8 +17,6 @@
   #include <GL/gl.h>
   #include <GL/glu.h>
 #elif defined(MACOSX)
-  #include <termios.h>
-  #include <unistd.h>
   #include <OpenGL/gl.h>
   #include <OpenGL/glu.h>
 #endif
