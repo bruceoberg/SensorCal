@@ -103,6 +103,10 @@ Examples with container prefixes:
 
 **Semantic over implementation:** prefer `mpEnumValue` over `tplData`, `lEnum` over `lMember`.
 
+**Adjective ordering:** Place refining adjectives *after* the noun, not before.
+This groups related names together and leaves room for future variants
+(e.g., `m_strPortActive`, `m_strPortPrevious` — not `m_strActivePort`, `m_strPreviousPort`).
+
 ### Variable Name Examples
 
 ```python
@@ -186,6 +190,7 @@ Pattern: `[ReturnTypeTag]VerbNoun(...)`
 - Use `Set` for setters; legacy code may use `Get` for getters (no longer preferred).
 - Functions that may fail and return bool: `FTryWhatever()`
 - Factory / lookup functions return their tag: `StrName()`, `PathOutput()`
+- Prefer `Update()` for routines called regularly in an update/timer loop (not `Tick`).
 
 ```python
 def FIsEmpty(self) -> bool: ...
@@ -254,6 +259,35 @@ def MpStrDocaLoad(pathYaml: Path) -> dict[str, SDocumentArgs]: ...
 - `override` keyword on all overridden virtual functions.
 - No exceptions, no RTTI, no STL.
 
+### Parameter Ordering
+
+In function/method signatures, **counts come before pointers/arrays**.
+This applies to buffer-style APIs and any pair of (size, data) parameters.
+
+```cpp
+// Correct — count before pointer
+int Read(int cB, uint8_t * pB);
+int Write(int cB, const void * pV);
+
+// Wrong
+int Read(uint8_t * pB, int cB);
+```
+
+### Parameter Naming
+
+Parameters follow the same Hungarian tag rules as local variables.
+Capitalize the first letter of each tag after any prefix.
+
+```cpp
+// Correct
+void Write(int cB, const void * pV);
+int Read(int cB, uint8_t * pB);
+
+// Wrong — missing tag capitalization
+void Write(int cb, const void * pv);
+int Read(int cBufMax, uint8_t * pBuf);   // Buf is not a tag; use B for bytes
+```
+
 ---
 
 ## Comments
@@ -266,6 +300,8 @@ def MpStrDocaLoad(pathYaml: Path) -> dict[str, SDocumentArgs]: ...
 - All struct/class members should be commented unless trivially obvious.
 - Header: one-to-two-line class description; one-liner per non-obvious method.
 - Don't duplicate what the code already says.
+- No comments are better than wrong comments. Stale or misleading comments are worse than none.
+- Strive to have documentation built into the names of things themselves.
 
 ---
 
