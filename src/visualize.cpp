@@ -44,10 +44,6 @@ void display_callback()
 
 	libcalib::SQuat orientation = calib.m_current_orientation;
 	
-	// TODO: this almost but doesn't perfectly seems to get the
-	//  real & screen axes in sync....
-	orientation.q3 *= -1.0f;
-
 	float rotation[9];
 	quad_to_rotation(&orientation, rotation);
 
@@ -62,13 +58,13 @@ void display_callback()
 		switch (calib.m_magcal.m_solver)
 		{
 		case libcalib::MagCalibrator::SOLVER_4Inv:
-			glColor3f(1, 1, 0);	// yellow
-			break;
-		case libcalib::MagCalibrator::SOLVER_7Eig:
 			glColor3f(1, 0, 1);	// magenta
 			break;
-		case libcalib::MagCalibrator::SOLVER_10Eig:
+		case libcalib::MagCalibrator::SOLVER_7Eig:
 			glColor3f(0, 1, 1);	// cyan
+			break;
+		case libcalib::MagCalibrator::SOLVER_10Eig:
+			glColor3f(1, 1, 0);	// yellow
 			break;
 		default:
 			glColor3f(1, 0, 0);	// red

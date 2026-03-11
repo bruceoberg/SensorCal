@@ -1,10 +1,9 @@
 #include "gui.h"
 #include "imuread.h"
+#include "portscanner.h"
 
 #include "image2wx/image2wx.h"
 
-
-wxString port_name;
 static bool show_calibration_confirmed = false;
 
 
@@ -67,9 +66,8 @@ BEGIN_EVENT_TABLE(MyFrame,wxFrame)
 	EVT_BUTTON(ID_SENDCAL_BUTTON, MyFrame::OnSendCal)
 	EVT_TIMER(ID_TIMER, MyFrame::OnTimer)
 	EVT_MENU_RANGE(9000, 9999, MyFrame::OnPortMenu)
+	EVT_MENU(ID_RESTART_SCAN, MyFrame::OnPortMenu)
 	EVT_MENU_OPEN(MyFrame::OnShowMenu)
-	EVT_COMBOBOX(ID_PORTLIST, MyFrame::OnPortList)
-	EVT_COMBOBOX_DROPDOWN(ID_PORTLIST, MyFrame::OnShowPortList)
 END_EVENT_TABLE()
 
 wxBitmap MyBitmap(const char *name)
@@ -124,12 +122,9 @@ MyFrame::MyFrame(wxWindow *parent, wxWindowID id, const wxString &title,
 	leftsizer->Add(vsizer, 0, wxALL, 8);
 	text = new wxStaticText(panel, wxID_ANY, "Port");
 	vsizer->Add(text, 0, wxTOP|wxBOTTOM, 4);
-	m_port_list = new wxOwnerDrawnComboBox(panel, ID_PORTLIST, "",
-		wxDefaultPosition, wxDefaultSize, 0, NULL, wxCB_READONLY);
-	m_port_list->Append("(none)");
-	m_port_list->Append(SAMPLE_PORT_NAME); // never seen, only for initial size
-	m_port_list->SetSelection(0);
-	vsizer->Add(m_port_list, 1, wxEXPAND, 0);
+	m_text_port_status = new wxStaticText(panel, wxID_ANY, "Searching...",
+		wxDefaultPosition, wxDefaultSize);
+	vsizer->Add(m_text_port_status, 0, wxEXPAND | wxTOP | wxBOTTOM, 4);
 
 	vsizer->AddSpacer(8);
 	text = new wxStaticText(panel, wxID_ANY, "Actions");
@@ -248,29 +243,41 @@ MyFrame::MyFrame(wxWindow *parent, wxWindowID id, const wxString &title,
 	//open_port(PORT);
 	m_timer = new wxTimer(this, ID_TIMER);
 	m_timer->Start(14, wxTIMER_CONTINUOUS);
+	Scanner().StartScan();
 }
 
 void MyFrame::OnTimer(wxTimerEvent &event)
 {
+	#define TWEAKABLE static const
+	TWEAKABLE int s_cDotsMax = 4;
+
 	libcalib::Calibrator & calib = libcalib::Calibrator::Ensure();
 
-	//printf("OnTimer\n");
-	if (port_is_open()) {
-		read_serial_data();
+	Scanner().Update();
+
+	if (Scanner().FIsActive())
+	{
 		m_canvas->Refresh();
-		if (calib.m_magcal.AreErrorsOk()) {
-			if (!m_sendcal_menu->IsEnabled(ID_SENDCAL_MENU) || !m_button_sendcal->IsEnabled()) {
+
+		if (calib.m_magcal.AreErrorsOk())
+		{
+			if (!m_sendcal_menu->IsEnabled(ID_SENDCAL_MENU) || !m_button_sendcal->IsEnabled())
+			{
 				m_sendcal_menu->Enable(ID_SENDCAL_MENU, true);
 				m_button_sendcal->Enable(true);
 				m_confirm_icon->SetBitmap(MyBitmap("checkempty.png"));
 			}
-		} else if (calib.m_magcal.AreErrorsBad()) {
-			if (m_sendcal_menu->IsEnabled(ID_SENDCAL_MENU) || m_button_sendcal->IsEnabled()) {
+		}
+		else if (calib.m_magcal.AreErrorsBad())
+		{
+			if (m_sendcal_menu->IsEnabled(ID_SENDCAL_MENU) || m_button_sendcal->IsEnabled())
+			{
 				m_sendcal_menu->Enable(ID_SENDCAL_MENU, false);
 				m_button_sendcal->Enable(false);
 				m_confirm_icon->SetBitmap(MyBitmap("checkemptygray.png"));
 			}
 		}
+
 		m_err_coverage->SetLabelText(wxString::Format("%.1f%%", calib.m_magcal.ErrGaps()));
 		m_err_variance->SetLabelText(wxString::Format("%.1f%%", calib.m_magcal.ErrVariance()));
 		m_err_wobble->SetLabelText(wxString::Format("%.1f%%", calib.m_magcal.ErrWobble()));
@@ -290,20 +297,47 @@ void MyFrame::OnTimer(wxTimerEvent &event)
 		for (int i=0; i < 3; i++) {
 			m_gyro[i]->SetLabelText(wxString::Format("%.3f", 0.0f)); // TODO...
 		}
-	} else {
-		if (!port_name.IsEmpty()) {
-			//printf("port has closed, updating stuff\n");
+
+		// Update status label
+
+		m_text_port_status->SetLabelText(
+			wxString::Format("IMU on %s", Scanner().StrPortActive()));
+
+		m_button_clear->Enable(true);
+	}
+	else
+	{
+		// Not connected — scanner is probing
+
+		// Animate the "Searching..." label with a cycling dot count
+		// so the user can see the app is alive.
+
+		TWEAKABLE int s_msPerDot = 500;
+		TWEAKABLE int s_cTicksPerDot = s_msPerDot / 14;
+
+		static int s_cDots = 0;
+		static int s_cTicks = 0;
+		if (++s_cTicks >= s_cTicksPerDot)
+		{
+			s_cTicks = 0;
+			s_cDots = (s_cDots + 1) % (s_cDotsMax + 1);
+		}
+		wxString strDots(wxT('.'), s_cDots);
+		m_text_port_status->SetLabelText(wxString::Format("Searching%s", strDots));
+
+		// Disable controls that require a connection
+
+		if (m_sendcal_menu->IsEnabled(ID_SENDCAL_MENU) || m_button_sendcal->IsEnabled())
+		{
 			m_sendcal_menu->Enable(ID_SENDCAL_MENU, false);
-			m_button_clear->Enable(false);
 			m_button_sendcal->Enable(false);
+			m_button_clear->Enable(false);
 			m_confirm_icon->SetBitmap(MyBitmap("checkemptygray.png"));
-			m_port_list->Clear();
-			m_port_list->Append("(none)");
-			m_port_list->SetSelection(0);
-			port_name = "";
 		}
 	}
-	if (show_calibration_confirmed) {
+
+	if (show_calibration_confirmed)
+	{
 		m_confirm_icon->SetBitmap(MyBitmap("checkgreen.png"));
 		show_calibration_confirmed = false;
 	}
@@ -345,90 +379,61 @@ void calibration_confirmed()
 
 void MyFrame::OnShowMenu(wxMenuEvent &event)
 {
-        wxMenu *menu = event.GetMenu();
-        if (menu != m_port_menu) return;
-        //printf("OnShow Port Menu, %s\n", (const char *)menu->GetTitle());
-	while (menu->GetMenuItemCount() > 0) {
+	wxMenu *menu = event.GetMenu();
+	if (menu != m_port_menu) return;
+
+	while (menu->GetMenuItemCount() > 0)
+	{
 		menu->Delete(menu->GetMenuItems()[0]);
 	}
-        menu->AppendRadioItem(9000, " (none)");
-	bool isopen = port_is_open();
-	if (!isopen) menu->Check(9000, true);
-        wxArrayString list = serial_port_list();
-        int num = list.GetCount();
-        for (int i=0; i < num; i++) {
-                menu->AppendRadioItem(9001 + i, list[i]);
-                if (isopen && port_name.IsSameAs(list[i])) {
-                        menu->Check(9001 + i, true);
-                }
-        }
+
+	menu->AppendRadioItem(9000, " (none)");
+	if (!Scanner().FIsActive()) menu->Check(9000, true);
+
+	wxArrayString list = serial_port_list();
+	int num = list.GetCount();
+	for (int i=0; i < num; i++)
+	{
+		menu->AppendRadioItem(9001 + i, list[i]);
+		if (Scanner().FIsActive() && Scanner().StrPortActive().IsSameAs(list[i]))
+		{
+			menu->Check(9001 + i, true);
+		}
+	}
+
+	menu->AppendSeparator();
+	menu->Append(ID_RESTART_SCAN, wxT("Restart Scan"));
+
 	menu->UpdateUI();
 }
-
-int NWidthInDc(const wxClientDC & dc, const wxString & str)
-{
-	int nWidth = 0;
-	dc.GetTextExtent(str, &nWidth, nullptr);
-
-	return nWidth;
-}
-
-void MyFrame::OnShowPortList(wxCommandEvent& event)
-{
-	//printf("OnShowPortList\n");
-	m_port_list->Clear();
-	m_port_list->Append("(none)");
-
-    wxClientDC dc(m_port_list);
-    dc.SetFont(m_port_list->GetFont());
-
-	int nWidthMax = NWidthInDc(dc, m_port_list->GetString(0));
-
-    for (const wxString& strPort : serial_port_list())
-    {
-        m_port_list->Append(strPort);
-
-        nWidthMax = wxMax(nWidthMax, NWidthInDc(dc, strPort));
-    }
-
-    static const int s_dxPadding = 20;
-    m_port_list->SetPopupMinWidth(nWidthMax + s_dxPadding);
-}
-
 
 void MyFrame::OnPortMenu(wxCommandEvent &event)
 {
 	libcalib::Calibrator & calib = libcalib::Calibrator::Ensure();
 
-        int id = event.GetId();
-        wxString name = m_port_menu->FindItem(id)->GetItemLabelText();
+	int id = event.GetId();
+	if (id == ID_RESTART_SCAN)
+	{
+		Scanner().RestartScan();
+		calib.reset();
+		m_button_clear->Enable(false);
+		return;
+	}
 
-	close_port();
-        //printf("OnPortMenu, id = %d, name = %s\n", id, (const char *)name);
-	port_name = name;
-	m_port_list->Clear();
-	m_port_list->Append(port_name);
-	m_port_list->SetSelection(0);
-        if (id == 9000) return;
+	wxString strName = m_port_menu->FindItem(id)->GetItemLabelText();
+	if (id == 9000)
+	{
+		// (none) — stop scanning, disconnect
+
+		Scanner().RestartScan();
+		calib.reset();
+		m_button_clear->Enable(false);
+		return;
+	}
+
 	calib.reset();
-	open_port((const char *)name);
-	m_button_clear->Enable(true);
-}
-
-void MyFrame::OnPortList(wxCommandEvent& event)
-{
-	libcalib::Calibrator & calib = libcalib::Calibrator::Ensure();
-
-	int selected = m_port_list->GetSelection();
-	if (selected == wxNOT_FOUND) return;
-	wxString name = m_port_list->GetString(selected);
-	//printf("OnPortList, %s\n", (const char *)name);
-	close_port();
-	port_name = name;
-	if (name == "(none)") return;
-	calib.reset();
-	open_port((const char *)name);
-	m_button_clear->Enable(true);
+	Scanner().ForcePort(strName);
+	m_button_clear->Enable(Scanner().FIsActive());
 }
 
 
@@ -460,7 +465,7 @@ MyFrame::~MyFrame()
 {
 	m_timer->Stop();
 	delete m_timer;
-	close_port();
+	Scanner().CloseActive();
 }
 
 

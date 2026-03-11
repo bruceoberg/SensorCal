@@ -34,11 +34,6 @@
 
 #define TIMEOUT_MSEC 14
 
-extern int port_is_open(void);
-extern int open_port(const char *name);
-extern int read_serial_data(void);
-extern int write_serial_data(const void *ptr, int len);
-extern void close_port(void);
 void cal1_data(const float *data);
 void cal2_data(const float *data);
 void calibration_confirmed(void);

@@ -9,7 +9,6 @@
 #include "wx/wfstream.h"
 #include "wx/zstream.h"
 #include "wx/txtstrm.h"
-#include <wx/odcombo.h>
 #if defined(__WXMAC__) || defined(__WXCOCOA__)
 #ifdef __DARWIN__
 #include <OpenGL/gl.h>
@@ -28,7 +27,7 @@
 #define ID_SENDCAL_MENU		10001
 #define ID_CLEAR_BUTTON		10002
 #define ID_SENDCAL_BUTTON	10003
-#define ID_PORTLIST		10004
+#define ID_RESTART_SCAN		10005
 
 class MyCanvas : public wxGLCanvas
 {
@@ -82,13 +81,11 @@ private:
 	wxButton *m_button_sendcal;
 	wxStaticBitmap *m_confirm_icon;
 	wxMenu *m_port_menu;
-	wxOwnerDrawnComboBox *m_port_list; // switched from wxComboBox to get SetPopupMinWidth()
+	wxStaticText *m_text_port_status;	// scanning/connected label
 	wxMenu *m_sendcal_menu;
 	void OnSendCal(wxCommandEvent &event);
 	void OnClear(wxCommandEvent &event);
 	void OnShowMenu(wxMenuEvent &event);
-	void OnShowPortList(wxCommandEvent &event);
-	void OnPortList(wxCommandEvent& event);
 	void OnPortMenu(wxCommandEvent &event);
 	void OnTimer(wxTimerEvent &event);
 	void OnAbout(wxCommandEvent &event);
@@ -109,15 +106,6 @@ private:
 
 // portlist.cpp
 wxArrayString serial_port_list();
-
-// sample port name, for initial sizing of left panel
-#if defined(LINUX)
-#define SAMPLE_PORT_NAME "/dev/ttyACM5."
-#elif defined(WINDOWS)
-#define SAMPLE_PORT_NAME "COM22:."
-#elif defined(MACOSX)
-#define SAMPLE_PORT_NAME "/dev/cu.usbmodem2457891..."
-#endif
 
 
 #endif
