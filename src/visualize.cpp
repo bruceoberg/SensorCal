@@ -1,33 +1,42 @@
 #include "imuread.h"
 
-static void quad_to_rotation(const libcalib::SQuat *quat, float (& rmatrix)[9])
+#include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
+static glm::mat4 Mat4FromBasisVectors(glm::vec3 vecX, glm::vec3 vecY, glm::vec3 vecZ)
 {
-	float qw = quat->q0;
-	float qx = quat->q1;
-	float qy = quat->q2;
-	float qz = quat->q3;
-	rmatrix[0] = 1.0f - 2.0f * qy * qy - 2.0f * qz * qz;
-	rmatrix[1] = 2.0f * qx * qy - 2.0f * qz * qw;
-	rmatrix[2] = 2.0f * qx * qz + 2.0f * qy * qw;
-	rmatrix[3] = 2.0f * qx * qy + 2.0f * qz * qw;
-	rmatrix[4] = 1.0f  - 2.0f * qx * qx - 2.0f * qz * qz;
-	rmatrix[5] = 2.0f * qy * qz - 2.0f * qx * qw;
-	rmatrix[6] = 2.0f * qx * qz - 2.0f * qy * qw;
-	rmatrix[7] = 2.0f * qy * qz + 2.0f * qx * qw;
-	rmatrix[8] = 1.0f  - 2.0f * qx * qx - 2.0f * qy * qy;
+	// columns of a mat4 are vec4; w column is identity
+	return glm::mat4(
+		glm::vec4(vecX, 0.0f),
+		glm::vec4(vecY, 0.0f),
+		glm::vec4(vecZ, 0.0f),
+		glm::vec4(0.0f, 0.0f, 0.0f, 1.0f)
+	);
 }
 
-static void rotate(const libcalib::SPoint *in, libcalib::SPoint *out, const float (& rmatrix)[9])
+constexpr glm::vec3 s_vecAxisX  = glm::vec3( 1.0f,  0.0f,  0.0f);
+constexpr glm::vec3 s_vecAxisY  = glm::vec3( 0.0f,  1.0f,  0.0f);
+constexpr glm::vec3 s_vecAxisZ  = glm::vec3( 0.0f,  0.0f,  1.0f);
+constexpr glm::vec3 s_vecAxisNX = glm::vec3(-1.0f,  0.0f,  0.0f);
+constexpr glm::vec3 s_vecAxisNY = glm::vec3( 0.0f, -1.0f,  0.0f);
+constexpr glm::vec3 s_vecAxisNZ = glm::vec3( 0.0f,  0.0f, -1.0f);
+
+static GLuint s_glistSphere;
+
+namespace Light
 {
-	out->x = in->x * rmatrix[0] + in->y * rmatrix[1] + in->z * rmatrix[2];
-	out->y = in->x * rmatrix[3] + in->y * rmatrix[4] + in->z * rmatrix[5];
-	out->z = in->x * rmatrix[6] + in->y * rmatrix[7] + in->z * rmatrix[8];
+	constexpr GLfloat s_rgbaAmbient[]  = { 0.0f, 0.0f, 0.0f, 1.0f };
+	constexpr GLfloat s_rgbaDiffuse[]  = { 1.0f, 1.0f, 1.0f, 1.0f };
+	constexpr GLfloat s_rgbaSpecular[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+	constexpr GLfloat s_pos[]          = { 2.0f, 5.0f, 5.0f, 0.0f };
+
+	constexpr GLfloat s_matAmbient[]   = { 0.7f, 0.7f, 0.7f, 1.0f };
+	constexpr GLfloat s_matDiffuse[]   = { 0.8f, 0.8f, 0.8f, 1.0f };
+	constexpr GLfloat s_matSpecular[]  = { 1.0f, 1.0f, 1.0f, 1.0f };
+	constexpr GLfloat s_matShininess[] = { 100.0f };
 }
-
-
-
-static GLuint spherelist;
-static GLuint spherelowreslist;
 
 void display_callback()
 {
@@ -35,17 +44,26 @@ void display_callback()
 
 	calib.m_magcal.EnsureQuality();
 
-	float xscale = 0.05;
-	float yscale = 0.05;
-	float zscale = 0.05;
-	float xoff = 0.0;
-	float yoff = 0.0;
-	float zoff = -7.0;
+	// Build the combined modelview transform:
+	//   matTransform = matTranslate * matScale * matSwizzle * matRotation
+	//
+	// matRotation  — AHRS orientation quaternion
+	// matSwizzle     — remap sensor axes to GL view axes
+	// matScale     — scale calibrated mag values into view
+	// matTranslate — push the sphere cluster back into the frustum
 
 	libcalib::SQuat orientation = calib.m_current_orientation;
-	
-	float rotation[9];
-	quad_to_rotation(&orientation, rotation);
+	glm::quat qRot(orientation.q0, orientation.q1, orientation.q2, orientation.q3);
+	glm::mat4 matRotation = glm::mat4_cast(qRot);
+
+	// Remap sensor axes to GL view axes for Adafruit ISM330DHCX + LIS3MDL
+	// (product 4569): sensor x → GL x, sensor y → GL -z, sensor z → GL y
+	glm::mat4 matSwizzle = Mat4FromBasisVectors(s_vecAxisX, s_vecAxisNZ, s_vecAxisY);
+
+	glm::mat4 matScale = glm::scale(glm::mat4(1.0f), glm::vec3(0.05f));
+	glm::mat4 matTranslate = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -7.0f));
+
+	glm::mat4 matTransform = matTranslate * matScale * matSwizzle * matRotation;
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -72,27 +90,19 @@ void display_callback()
 		}
 	}
 
+	// Transform points on the CPU so the GL modelview stays identity + translation.
+	// This keeps sphere normals in eye space for consistent front-lighting.
+
 	glLoadIdentity();
-	
+
 	for (int i = 0; i < calib.m_magcal.m_cSamp; ++i)
 	{
 		const auto & samp = calib.m_magcal.m_aSamp[i];
-		const libcalib::SPoint * pBc = &samp.m_pntCal;
-		libcalib::SPoint draw;
-
-		rotate(pBc, &draw, rotation);
+		glm::vec4 pos = matTransform * glm::vec4(samp.m_pntCal.x, samp.m_pntCal.y, samp.m_pntCal.z, 1.0f);
 
 		glPushMatrix();
-		glTranslatef(
-			draw.x * xscale + xoff,
-			draw.z * yscale + yoff,
-			draw.y * zscale + zoff
-		);
-		if (draw.y >= 0.0f) {
-			glCallList(spherelist);
-		} else {
-			glCallList(spherelowreslist);
-		}
+		glTranslatef(pos.x, pos.y, pos.z);
+		glCallList(s_glistSphere);
 		glPopMatrix();
 	}
 }
@@ -111,16 +121,6 @@ void resize_callback(int width, int height)
 }
 
 
-static const GLfloat light_ambient[]  = { 0.0f, 0.0f, 0.0f, 1.0f };
-static const GLfloat light_diffuse[]  = { 1.0f, 1.0f, 1.0f, 1.0f };
-static const GLfloat light_specular[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-static const GLfloat light_position[] = { 2.0f, 5.0f, 5.0f, 0.0f };
-
-static const GLfloat mat_ambient[]    = { 0.7f, 0.7f, 0.7f, 1.0f };
-static const GLfloat mat_diffuse[]    = { 0.8f, 0.8f, 0.8f, 1.0f };
-static const GLfloat mat_specular[]   = { 1.0f, 1.0f, 1.0f, 1.0f };
-static const GLfloat high_shininess[] = { 100.0f };
-
 void visualize_init()
 {
 	GLUquadric *sphere;
@@ -135,25 +135,21 @@ void visualize_init()
 	//glEnable(GL_NORMALIZE);
 	glEnable(GL_COLOR_MATERIAL);
 	glEnable(GL_LIGHTING);
-	glLightfv(GL_LIGHT0, GL_AMBIENT,  light_ambient);
-	glLightfv(GL_LIGHT0, GL_DIFFUSE,  light_diffuse);
-	glLightfv(GL_LIGHT0, GL_SPECULAR, light_specular);
-	glLightfv(GL_LIGHT0, GL_POSITION, light_position);
-	glMaterialfv(GL_FRONT, GL_AMBIENT,   mat_ambient);
-	glMaterialfv(GL_FRONT, GL_DIFFUSE,   mat_diffuse);
-	glMaterialfv(GL_FRONT, GL_SPECULAR,  mat_specular);
-	glMaterialfv(GL_FRONT, GL_SHININESS, high_shininess);
+	glLightfv(GL_LIGHT0, GL_AMBIENT,  s_rgbaLightAmbient);
+	glLightfv(GL_LIGHT0, GL_DIFFUSE,  s_rgbaLightDiffuse);
+	glLightfv(GL_LIGHT0, GL_SPECULAR, s_rgbaLightSpecular);
+	glLightfv(GL_LIGHT0, GL_POSITION, s_posLight);
+	glMaterialfv(GL_FRONT, GL_AMBIENT,   s_matAmbient);
+	glMaterialfv(GL_FRONT, GL_DIFFUSE,   s_matDiffuse);
+	glMaterialfv(GL_FRONT, GL_SPECULAR,  s_matSpecular);
+	glMaterialfv(GL_FRONT, GL_SHININESS, s_matShininess);
 
 	sphere = gluNewQuadric();
 	gluQuadricDrawStyle(sphere, GLU_FILL);
 	gluQuadricNormals(sphere, GLU_SMOOTH);
-	spherelist = glGenLists(1);
-	glNewList(spherelist, GL_COMPILE);
+	s_glistSphere = glGenLists(1);
+	glNewList(s_glistSphere, GL_COMPILE);
 	gluSphere(sphere, 0.08, 16, 14);
-	glEndList();
-	spherelowreslist = glGenLists(1);
-	glNewList(spherelowreslist, GL_COMPILE);
-	gluSphere(sphere, 0.08, 12, 10);
 	glEndList();
 	gluDeleteQuadric(sphere);
 }
