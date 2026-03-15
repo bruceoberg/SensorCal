@@ -95,9 +95,9 @@ void display_callback()
 
 	glLoadIdentity();
 
-	for (int i = 0; i < calib.m_magcal.m_cSamp; ++i)
+	for (int iSamp = 0; iSamp < calib.m_magcal.m_samps.CSamp(); ++iSamp)
 	{
-		const auto & samp = calib.m_magcal.m_aSamp[i];
+		const auto & samp = calib.m_magcal.m_samps.Samp(iSamp);
 		glm::vec4 pos = matTransform * glm::vec4(samp.m_pntCal.x, samp.m_pntCal.y, samp.m_pntCal.z, 1.0f);
 
 		glPushMatrix();
@@ -135,14 +135,14 @@ void visualize_init()
 	//glEnable(GL_NORMALIZE);
 	glEnable(GL_COLOR_MATERIAL);
 	glEnable(GL_LIGHTING);
-	glLightfv(GL_LIGHT0, GL_AMBIENT,  s_rgbaLightAmbient);
-	glLightfv(GL_LIGHT0, GL_DIFFUSE,  s_rgbaLightDiffuse);
-	glLightfv(GL_LIGHT0, GL_SPECULAR, s_rgbaLightSpecular);
-	glLightfv(GL_LIGHT0, GL_POSITION, s_posLight);
-	glMaterialfv(GL_FRONT, GL_AMBIENT,   s_matAmbient);
-	glMaterialfv(GL_FRONT, GL_DIFFUSE,   s_matDiffuse);
-	glMaterialfv(GL_FRONT, GL_SPECULAR,  s_matSpecular);
-	glMaterialfv(GL_FRONT, GL_SHININESS, s_matShininess);
+	glLightfv(GL_LIGHT0, GL_AMBIENT,  Light::s_rgbaAmbient);
+	glLightfv(GL_LIGHT0, GL_DIFFUSE,  Light::s_rgbaDiffuse);
+	glLightfv(GL_LIGHT0, GL_SPECULAR, Light::s_rgbaSpecular);
+	glLightfv(GL_LIGHT0, GL_POSITION, Light::s_pos);
+	glMaterialfv(GL_FRONT, GL_AMBIENT,   Light::s_matAmbient);
+	glMaterialfv(GL_FRONT, GL_DIFFUSE,   Light::s_matDiffuse);
+	glMaterialfv(GL_FRONT, GL_SPECULAR,  Light::s_matSpecular);
+	glMaterialfv(GL_FRONT, GL_SHININESS, Light::s_matShininess);
 
 	sphere = gluNewQuadric();
 	gluQuadricDrawStyle(sphere, GLU_FILL);
