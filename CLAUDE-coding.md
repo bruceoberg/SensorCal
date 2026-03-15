@@ -2,6 +2,7 @@
 
 This document captures naming conventions, coding style preferences, and general development practices.
 It is based on the Sucker Punch C++ Hungarian notation standard, adapted for Python and other languages.
+The original Sucker Punch standard can be found in a companion file to this one, named CLAUDE-coding-sucker-punch.md.
 
 ---
 
@@ -48,10 +49,8 @@ Variables follow the pattern: `[scope][prefix][Tag][Detail][Suffix]`
 |-----|------|
 | `b` | byte (u8) |
 | `ch` | char |
-| `wch` | wide char (wchar_t aka WCH) |
 | `str` | string |
-| `g` | float (generic or unknown) |
-| `s` | float (scalar or x/y/z component) |
+| `g` | float |
 | `u` | float 0..1 |
 | `su` | float -1..1 |
 | `f` | bool |
@@ -70,7 +69,6 @@ Variables follow the pattern: `[scope][prefix][Tag][Detail][Suffix]`
 | Tag | Type |
 |-----|------|
 | `l` | list (Python) |
-| `a` | raw array (C/C++) |
 | `ary` | templated array (C++) |
 | `mp` | dict/map with well-defined keys (typically string→value) |
 | `obj` | opaque dict (slurped from JSON/YAML) |
@@ -80,32 +78,14 @@ Variables follow the pattern: `[scope][prefix][Tag][Detail][Suffix]`
 | `sl` | singly-linked list |
 | `hash` | hash table |
 
-**Capitalization rule:** Use camelCase to separate prefixes, tags, and suffixes within a name.
-Capitalize the first letter of each tag/suffix after the initial prefix(es).
-
-Examples with single-char tags:
-- Array of floats: `aG` (not `ag`)
-- Index into float array: `iG` (not `ig`)
-- Count of floats: `cG` (not `cg`)
-- Pointer to char: `pCh` (not `pch`)
-
-Examples with multi-char tags:
-- Array of chars: `aChLine` (not `achLine`)
-- Count of chars: `cChLine` (not `cchLine`)
-- Pointer to char at end: `pChEnd` (not `pchEnd`)
-
-Examples with container prefixes:
-- Array of pointers: `aPFoo`
-- Array of arrays: `aAFoo`
+**Capitalization rule:** When multiple prefixes stack, capitalize only the first letter of each additional tag.
+- Array of pointers: `arypFoo`
+- Array of arrays: `aryaryFoo`
 - Map from string to int: `mpStrInt`
 - Map from enum to string: `mpEnumStr`
 - Set of strings: `setStr`
 
 **Semantic over implementation:** prefer `mpEnumValue` over `tplData`, `lEnum` over `lMember`.
-
-**Adjective ordering:** Place refining adjectives *after* the noun, not before.
-This groups related names together and leaves room for future variants
-(e.g., `m_strPortActive`, `m_strPortPrevious` — not `m_strActivePort`, `m_strPreviousPort`).
 
 ### Variable Name Examples
 
@@ -190,7 +170,6 @@ Pattern: `[ReturnTypeTag]VerbNoun(...)`
 - Use `Set` for setters; legacy code may use `Get` for getters (no longer preferred).
 - Functions that may fail and return bool: `FTryWhatever()`
 - Factory / lookup functions return their tag: `StrName()`, `PathOutput()`
-- Prefer `Update()` for routines called regularly in an update/timer loop (not `Tick`).
 
 ```python
 def FIsEmpty(self) -> bool: ...
@@ -259,93 +238,6 @@ def MpStrDocaLoad(pathYaml: Path) -> dict[str, SDocumentArgs]: ...
 - `override` keyword on all overridden virtual functions.
 - No exceptions, no RTTI, no STL.
 
-### Struct/Class Header Formatting
-
-Inside struct/class definitions, **triple-indent** (3 tabs) constructors, methods, and
-field names so they align vertically. Return types and field types sit at 1-tab indent;
-names begin at 3-tab indent, separated by tabs. This leaves room for long type names.
-
-- Constructors triple-indented to align with method/field names.
-- Long or complex parameter lists: each parameter on its own line, triple-indented.
-- Initializer list items on their own lines, triple-indented (same level as the ctor name).
-- Ctor/method body is one indent past the name (quadruple-indented, i.e. 4 tabs).
-- If a return type or field type won't fit in the 1-tab column, put the name on the
-  next line, still triple-indented.
-- Inline bodies (getters, trivial one-liners) go on the line after the signature,
-  quadruple-indented (one past the name), same rule as ctor bodies.
-
-```cpp
-struct MagSample
-{
-	typedef uint32_t ID;
-
-			MagSample() = default;
-
-			MagSample(
-				const SPoint & pntRaw,
-				const float (&cal_V)[3],
-				const float (&cal_invW)[3][3])
-			: m_pntRaw(pntRaw),
-			  m_pntCal(),
-			  m_field(),
-			  m_region(REGION_Nil),
-			  m_id()
-				{ Calibrate(cal_V, cal_invW); }
-
-	void	Calibrate(
-				const float (&cal_V)[3],
-				const float (&cal_invW)[3][3]);
-
-	SPoint	m_pntRaw;	// raw sample
-	SPoint	m_pntCal;	// calibrated sample
-	float	m_field;	// length of calibrated sample
-	REGION	m_region;	// sphere partition region (0..REGION_Max-1)
-	ID		m_id;		// monotonically increasing ID assigned at insertion
-};
-```
-
-Inline accessors follow the same pattern — body quadruple-indented below the signature.
-When the return type won't fit, it goes on its own line and the name drops to triple-indent:
-
-```cpp
-	int		CSamp() const
-				{ return m_cSamp; }
-	const MagSample &
-			Samp(int i) const
-				{ return m_aSamp[i]; }
-	int		CSampFromRegion(REGION region) const
-				{ return m_mpRegionCSamp[region]; }
-```
-
-### Parameter Ordering
-
-In function/method signatures, **counts come before pointers/arrays**.
-This applies to buffer-style APIs and any pair of (size, data) parameters.
-
-```cpp
-// Correct — count before pointer
-int Read(int cB, uint8_t * pB);
-int Write(int cB, const void * pV);
-
-// Wrong
-int Read(uint8_t * pB, int cB);
-```
-
-### Parameter Naming
-
-Parameters follow the same Hungarian tag rules as local variables.
-Capitalize the first letter of each tag after any prefix.
-
-```cpp
-// Correct
-void Write(int cB, const void * pV);
-int Read(int cB, uint8_t * pB);
-
-// Wrong — missing tag capitalization
-void Write(int cb, const void * pv);
-int Read(int cBufMax, uint8_t * pBuf);   // Buf is not a tag; use B for bytes
-```
-
 ---
 
 ## Comments
@@ -358,8 +250,6 @@ int Read(int cBufMax, uint8_t * pBuf);   // Buf is not a tag; use B for bytes
 - All struct/class members should be commented unless trivially obvious.
 - Header: one-to-two-line class description; one-liner per non-obvious method.
 - Don't duplicate what the code already says.
-- No comments are better than wrong comments. Stale or misleading comments are worse than none.
-- Strive to have documentation built into the names of things themselves.
 
 ---
 
