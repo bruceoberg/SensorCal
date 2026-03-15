@@ -259,6 +259,64 @@ def MpStrDocaLoad(pathYaml: Path) -> dict[str, SDocumentArgs]: ...
 - `override` keyword on all overridden virtual functions.
 - No exceptions, no RTTI, no STL.
 
+### Struct/Class Header Formatting
+
+Inside struct/class definitions, **triple-indent** (3 tabs) constructors, methods, and
+field names so they align vertically. Return types and field types sit at 1-tab indent;
+names begin at 3-tab indent, separated by tabs. This leaves room for long type names.
+
+- Constructors triple-indented to align with method/field names.
+- Long or complex parameter lists: each parameter on its own line, triple-indented.
+- Initializer list items on their own lines, triple-indented (same level as the ctor name).
+- Ctor/method body is one indent past the name (quadruple-indented, i.e. 4 tabs).
+- If a return type or field type won't fit in the 1-tab column, put the name on the
+  next line, still triple-indented.
+- Inline bodies (getters, trivial one-liners) go on the line after the signature,
+  quadruple-indented (one past the name), same rule as ctor bodies.
+
+```cpp
+struct MagSample
+{
+	typedef uint32_t ID;
+
+			MagSample() = default;
+
+			MagSample(
+				const SPoint & pntRaw,
+				const float (&cal_V)[3],
+				const float (&cal_invW)[3][3])
+			: m_pntRaw(pntRaw),
+			  m_pntCal(),
+			  m_field(),
+			  m_region(REGION_Nil),
+			  m_id()
+				{ Calibrate(cal_V, cal_invW); }
+
+	void	Calibrate(
+				const float (&cal_V)[3],
+				const float (&cal_invW)[3][3]);
+
+	SPoint	m_pntRaw;	// raw sample
+	SPoint	m_pntCal;	// calibrated sample
+	float	m_field;	// length of calibrated sample
+	REGION	m_region;	// sphere partition region (0..REGION_Max-1)
+	ID		m_id;		// monotonically increasing ID assigned at insertion
+};
+```
+
+Inline accessors follow the same pattern — body quadruple-indented below the signature.
+When the return type won't fit, it goes on its own line and the name drops to triple-indent:
+
+```cpp
+	int		CSamp() const
+				{ return m_cSamp; }
+	const MagSample &
+			Samp(int i) const
+				{ return m_aSamp[i]; }
+	int		CSampFromRegion(REGION region) const
+				{ return m_mpRegionCSamp[region]; }
+```
+
 ### Parameter Ordering
 
 In function/method signatures, **counts come before pointers/arrays**.
