@@ -239,7 +239,7 @@ MyFrame::MyFrame(wxWindow *parent, wxWindowID id, const wxString &title,
 	Raise();
 
 	m_canvas->InitGL();
-	calib.reset();
+	calib.Reset();
 	//open_port(PORT);
 	m_timer = new wxTimer(this, ID_TIMER);
 	m_timer->Start(14, wxTIMER_CONTINUOUS);
@@ -348,7 +348,7 @@ void MyFrame::OnClear(wxCommandEvent &event)
 	libcalib::Calibrator & calib = libcalib::Calibrator::Ensure();
 
 	//printf("OnClear\n");
-	calib.reset();
+	calib.Reset();
 }
 
 void MyFrame::OnSendCal(wxCommandEvent &event)
@@ -415,7 +415,7 @@ void MyFrame::OnPortMenu(wxCommandEvent &event)
 	if (id == ID_RESTART_SCAN)
 	{
 		Scanner().RestartScan();
-		calib.reset();
+		calib.Reset();
 		m_button_clear->Enable(false);
 		return;
 	}
@@ -426,12 +426,12 @@ void MyFrame::OnPortMenu(wxCommandEvent &event)
 		// (none) — stop scanning, disconnect
 
 		Scanner().RestartScan();
-		calib.reset();
+		calib.Reset();
 		m_button_clear->Enable(false);
 		return;
 	}
 
-	calib.reset();
+	calib.Reset();
 	Scanner().ForcePort(strName);
 	m_button_clear->Enable(Scanner().FIsActive());
 }
