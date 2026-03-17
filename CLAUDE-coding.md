@@ -2,7 +2,7 @@
 
 This document captures naming conventions, coding style preferences, and general development practices.
 It is based on the Sucker Punch C++ Hungarian notation standard, adapted for Python and other languages.
-The original Sucker Punch standard can be found in a companion file to this one, named CLAUDE-coding-sucker-punch.md.
+The original Sucker Punch standard can be found in a companion file to this one, named CLAUDE-coding-c.md.
 
 ---
 
