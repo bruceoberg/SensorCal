@@ -1,10 +1,10 @@
-# Sucker Punch C++ Coding Standards
+# C++ Coding Standards
 
 ## Introduction
 
-This document outlines Sucker Punch's coding standards for the C++ language.
+This document defines the C++ coding standard. It is based on the Sucker Punch Productions C++ standard as of December 2025, and is used here as-is with minor adaptations. Where this document and any other reference conflict, this document is authoritative.
 
-The decisions were made according to how well they satisfied the following questions, in rough order of importance:
+The standard was designed according to the following questions, in rough order of importance:
 
 1. How easy is it to understand and debug existing code?
 2. How easy is it to use existing code in the correct way?
@@ -36,7 +36,7 @@ Tabs not spaces. Tab stop set to 4 spaces.
 
 ## Names
 
-Sucker Punch uses a modified Hungarian convention for naming throughout the code base. Although it does simplify (and solidify) some aspects of naming, you still need to spend some time coming up with useful names. If you find all your names could be `Thing` and `DoIt` then you should probably revisit your design.
+This standard uses a modified Hungarian convention for naming throughout the code base. Although it does simplify (and solidify) some aspects of naming, you still need to spend some time coming up with useful names. If you find all your names could be `Thing` and `DoIt` then you should probably revisit your design.
 
 ### Class + Struct
 
