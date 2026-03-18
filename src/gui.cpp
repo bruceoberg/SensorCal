@@ -259,7 +259,7 @@ void MyFrame::OnTimer(wxTimerEvent &event)
 	{
 		m_canvas->Refresh();
 
-		if (calib.m_magcal.AreErrorsOk())
+		if (calib.m_sphitter.AreErrorsOk())
 		{
 			if (!m_sendcal_menu->IsEnabled(ID_SENDCAL_MENU) || !m_button_sendcal->IsEnabled())
 			{
@@ -268,7 +268,7 @@ void MyFrame::OnTimer(wxTimerEvent &event)
 				m_confirm_icon->SetBitmap(MyBitmap("checkempty.png"));
 			}
 		}
-		else if (calib.m_magcal.AreErrorsBad())
+		else if (calib.m_sphitter.AreErrorsBad())
 		{
 			if (m_sendcal_menu->IsEnabled(ID_SENDCAL_MENU) || m_button_sendcal->IsEnabled())
 			{
@@ -278,19 +278,19 @@ void MyFrame::OnTimer(wxTimerEvent &event)
 			}
 		}
 
-		m_err_coverage->SetLabelText(wxString::Format("%.1f%%", calib.m_magcal.ErrGaps()));
-		m_err_variance->SetLabelText(wxString::Format("%.1f%%", calib.m_magcal.ErrVariance()));
-		m_err_wobble->SetLabelText(wxString::Format("%.1f%%", calib.m_magcal.ErrWobble()));
-		m_err_fit->SetLabelText(wxString::Format("%.1f%%", calib.m_magcal.ErrFit()));
+		m_err_coverage->SetLabelText(wxString::Format("%.1f%%", calib.m_sphitter.ErrGaps()));
+		m_err_variance->SetLabelText(wxString::Format("%.1f%%", calib.m_sphitter.ErrVariance()));
+		m_err_wobble->SetLabelText(wxString::Format("%.1f%%", calib.m_sphitter.ErrWobble()));
+		m_err_fit->SetLabelText(wxString::Format("%.1f%%", calib.m_sphitter.ErrFit()));
 		for (int i=0; i < 3; i++) {
-			m_mag_offset[i]->SetLabelText(wxString::Format("%.2f", calib.m_magcal.m_cal_V[i]));
+			m_mag_offset[i]->SetLabelText(wxString::Format("%.2f", calib.m_sphitter.m_cal_V[i]));
 		}
 		for (int i=0; i < 3; i++) {
 			for (int j=0; j < 3; j++) {
-				m_mag_mapping[i][j]->SetLabelText(wxString::Format("%+.3f", calib.m_magcal.m_cal_invW[i][j]));
+				m_mag_mapping[i][j]->SetLabelText(wxString::Format("%+.3f", calib.m_sphitter.m_cal_invW[i][j]));
 			}
 		}
-		m_mag_field->SetLabelText(wxString::Format("%.2f", calib.m_magcal.m_cal_B));
+		m_mag_field->SetLabelText(wxString::Format("%.2f", calib.m_sphitter.m_cal_B));
 		for (int i=0; i < 3; i++) {
 			m_accel[i]->SetLabelText(wxString::Format("%.3f", 0.0f)); // TODO...
 		}
@@ -356,9 +356,9 @@ void MyFrame::OnSendCal(wxCommandEvent &event)
 	//libcalib::Calibrator & calib = libcalib::Calibrator::Ensure();
 
 	//printf("OnSendCal\n");
-	//const auto & V = calib.m_magcal.m_cal_V;
-	//const auto & invW = calib.m_magcal.m_cal_invW;
-	//const auto & errFit = calib.m_magcal.m_errFit;
+	//const auto & V = calib.m_sphitter.m_cal_V;
+	//const auto & invW = calib.m_sphitter.m_cal_invW;
+	//const auto & errFit = calib.m_sphitter.m_errFit;
 	//printf("Magnetic Calibration:   (%.1f%% fit error)\n", errFit);
 	//printf("   %7.2f   %6.3f %6.3f %6.3f\n",
 	//	V[0], invW[0][0], invW[0][1], invW[0][2]);

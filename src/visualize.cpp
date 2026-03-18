@@ -42,7 +42,7 @@ void display_callback()
 {
 	libcalib::Calibrator & calib = libcalib::Calibrator::Ensure();
 
-	calib.m_magcal.EnsureQuality();
+	calib.m_sphitter.EnsureQuality();
 
 	// Build the combined modelview transform:
 	//   matTransform = matTranslate * matScale * matSwizzle * matRotation
@@ -67,21 +67,21 @@ void display_callback()
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	if (calib.m_magcal.AreErrorsOk())
+	if (calib.m_sphitter.AreErrorsOk())
 	{
 		glColor3f(0, 1, 0);	// green
 	}
 	else
 	{
-		switch (calib.m_magcal.m_solver)
+		switch (calib.m_sphitter.m_solver)
 		{
-		case libcalib::MagCalibrator::SOLVER_4Inv:
+		case libcalib::CSphereFitter::SOLVER_4Inv:
 			glColor3f(1, 0, 1);	// magenta
 			break;
-		case libcalib::MagCalibrator::SOLVER_7Eig:
+		case libcalib::CSphereFitter::SOLVER_7Eig:
 			glColor3f(0, 1, 1);	// cyan
 			break;
-		case libcalib::MagCalibrator::SOLVER_10Eig:
+		case libcalib::CSphereFitter::SOLVER_10Eig:
 			glColor3f(1, 1, 0);	// yellow
 			break;
 		default:
@@ -95,9 +95,9 @@ void display_callback()
 
 	glLoadIdentity();
 
-	for (int iSamp = 0; iSamp < calib.m_magcal.m_samps.CSamp(); ++iSamp)
+	for (int iSamp = 0; iSamp < calib.m_sphitter.m_samps.CSamp(); ++iSamp)
 	{
-		const auto & samp = calib.m_magcal.m_samps.Samp(iSamp);
+		const auto & samp = calib.m_sphitter.m_samps.Samp(iSamp);
 		glm::vec4 pos = matTransform * glm::vec4(samp.m_pntCal.x, samp.m_pntCal.y, samp.m_pntCal.z, 1.0f);
 
 		glPushMatrix();
