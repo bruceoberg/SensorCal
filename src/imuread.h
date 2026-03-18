@@ -22,7 +22,7 @@
 #endif
 
 
-#include "libcalib.h"
+#include "libcalib/calibrator.h"
 
 #if defined(LINUX)
   #define PORT "/dev/ttyACM0"

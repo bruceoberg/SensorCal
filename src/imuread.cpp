@@ -3,7 +3,7 @@
 #include "imuread.h"
 #include <GL/glut.h> // sudo apt-get install xorg-dev libglu1-mesa-dev freeglut3-dev
 
-#include "libcalib.h"
+#include "libcalib/calibrator.h"
 
 MagCalibration_t magcal;
 Quaternion_t current_orientation;
