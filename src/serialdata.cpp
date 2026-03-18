@@ -87,9 +87,9 @@ int send_calibration()
 {
 	libcalib::Calibrator & calib = libcalib::Calibrator::Ensure();
 
-	const auto & V = calib.m_sphitter.m_cal_V;
-	const auto & invW = calib.m_sphitter.m_cal_invW;
-	const auto & B = calib.m_sphitter.m_cal_B;
+	const auto & V = calib.m_fitter.m_cal_V;
+	const auto & invW = calib.m_fitter.m_cal_invW;
+	const auto & B = calib.m_fitter.m_cal_B;
 
 	uint8_t* p, buf[68];
 	uint16_t crc;
