@@ -40,9 +40,10 @@ namespace Light
 
 void display_callback()
 {
-	libcalib::Calibrator & calib = libcalib::Calibrator::Ensure();
+	auto & calib = libcalib::Calibrator::Ensure();
+	auto & fitter = calib.m_fitter;
 
-	calib.m_fitter.EnsureQuality();
+	fitter.EnsureQuality();
 
 	// Build the combined modelview transform:
 	//   matTransform = matTranslate * matScale * matSwizzle * matRotation
@@ -67,13 +68,13 @@ void display_callback()
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	if (calib.m_fitter.AreErrorsOk())
+	if (fitter.AreErrorsOk())
 	{
 		glColor3f(0, 1, 0);	// green
 	}
 	else
 	{
-		switch (calib.m_fitter.m_solver)
+		switch (fitter.m_solver)
 		{
 		case libcalib::Sphere::CFitter::SOLVER_4Inv:
 			glColor3f(1, 0, 1);	// magenta
@@ -95,9 +96,9 @@ void display_callback()
 
 	glLoadIdentity();
 
-	for (int iSamp = 0; iSamp < calib.m_fitter.m_samps.CSamp(); ++iSamp)
+	for (int iSamp = 0; iSamp < fitter.m_samps.CSamp(); ++iSamp)
 	{
-		const auto & samp = calib.m_fitter.m_samps.Samp(iSamp);
+		const auto & samp = fitter.m_samps.Samp(iSamp);
 		glm::vec4 pos = matTransform * glm::vec4(samp.m_pntCal.x, samp.m_pntCal.y, samp.m_pntCal.z, 1.0f);
 
 		glPushMatrix();

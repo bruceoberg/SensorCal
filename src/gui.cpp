@@ -251,7 +251,8 @@ void MyFrame::OnTimer(wxTimerEvent &event)
 	#define TWEAKABLE static const
 	TWEAKABLE int s_cDotsMax = 4;
 
-	libcalib::Calibrator & calib = libcalib::Calibrator::Ensure();
+	const auto & calib = libcalib::Calibrator::Ensure();
+	const auto & fitter = calib.m_fitter;
 
 	Scanner().Update();
 
@@ -259,7 +260,7 @@ void MyFrame::OnTimer(wxTimerEvent &event)
 	{
 		m_canvas->Refresh();
 
-		if (calib.m_fitter.AreErrorsOk())
+		if (fitter.AreErrorsOk())
 		{
 			if (!m_sendcal_menu->IsEnabled(ID_SENDCAL_MENU) || !m_button_sendcal->IsEnabled())
 			{
@@ -268,7 +269,7 @@ void MyFrame::OnTimer(wxTimerEvent &event)
 				m_confirm_icon->SetBitmap(MyBitmap("checkempty.png"));
 			}
 		}
-		else if (calib.m_fitter.AreErrorsBad())
+		else if (fitter.AreErrorsBad())
 		{
 			if (m_sendcal_menu->IsEnabled(ID_SENDCAL_MENU) || m_button_sendcal->IsEnabled())
 			{
@@ -278,19 +279,19 @@ void MyFrame::OnTimer(wxTimerEvent &event)
 			}
 		}
 
-		m_err_coverage->SetLabelText(wxString::Format("%.1f%%", calib.m_fitter.ErrGaps()));
-		m_err_variance->SetLabelText(wxString::Format("%.1f%%", calib.m_fitter.ErrVariance()));
-		m_err_wobble->SetLabelText(wxString::Format("%.1f%%", calib.m_fitter.ErrWobble()));
-		m_err_fit->SetLabelText(wxString::Format("%.1f%%", calib.m_fitter.ErrFit()));
+		m_err_coverage->SetLabelText(wxString::Format("%.1f%%", fitter.ErrGaps()));
+		m_err_variance->SetLabelText(wxString::Format("%.1f%%", fitter.ErrVariance()));
+		m_err_wobble->SetLabelText(wxString::Format("%.1f%%", fitter.ErrWobble()));
+		m_err_fit->SetLabelText(wxString::Format("%.1f%%", fitter.ErrFit()));
 		for (int i=0; i < 3; i++) {
-			m_mag_offset[i]->SetLabelText(wxString::Format("%.2f", calib.m_fitter.m_cal_V[i]));
+			m_mag_offset[i]->SetLabelText(wxString::Format("%.2f", fitter.m_cal.m_vecV[i]));
 		}
 		for (int i=0; i < 3; i++) {
 			for (int j=0; j < 3; j++) {
-				m_mag_mapping[i][j]->SetLabelText(wxString::Format("%+.3f", calib.m_fitter.m_cal_invW[i][j]));
+				m_mag_mapping[i][j]->SetLabelText(wxString::Format("%+.3f", fitter.m_cal.m_matWInv[i][j]));
 			}
 		}
-		m_mag_field->SetLabelText(wxString::Format("%.2f", calib.m_fitter.m_cal_B));
+		m_mag_field->SetLabelText(wxString::Format("%.2f", fitter.m_cal.m_sB));
 		for (int i=0; i < 3; i++) {
 			m_accel[i]->SetLabelText(wxString::Format("%.3f", 0.0f)); // TODO...
 		}
@@ -353,12 +354,14 @@ void MyFrame::OnClear(wxCommandEvent &event)
 
 void MyFrame::OnSendCal(wxCommandEvent &event)
 {
-	//libcalib::Calibrator & calib = libcalib::Calibrator::Ensure();
+	//const auto & calib = libcalib::Calibrator::Ensure();
+	//const auto & fitter = calib.m_fitter;
+
 
 	//printf("OnSendCal\n");
-	//const auto & V = calib.m_fitter.m_cal_V;
-	//const auto & invW = calib.m_fitter.m_cal_invW;
-	//const auto & errFit = calib.m_fitter.m_errFit;
+	//const auto & V = fitter.m_cal.m_vecV;
+	//const auto & invW = fitter.m_cal.m_matWInv;
+	//const auto & errFit = fitter.m_errFit;
 	//printf("Magnetic Calibration:   (%.1f%% fit error)\n", errFit);
 	//printf("   %7.2f   %6.3f %6.3f %6.3f\n",
 	//	V[0], invW[0][0], invW[0][1], invW[0][2]);
