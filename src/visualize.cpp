@@ -43,7 +43,7 @@ void display_callback()
 	auto & calib = libcalib::Calibrator::Ensure();
 	auto & fitter = calib.m_fitter;
 
-	fitter.EnsureQuality();
+	fitter.UpdateQuality();
 
 	// Build the combined modelview transform:
 	//   matTransform = matTranslate * matScale * matSwizzle * matRotation
@@ -96,9 +96,8 @@ void display_callback()
 
 	glLoadIdentity();
 
-	for (int iSamp = 0; iSamp < fitter.m_samps.CSamp(); ++iSamp)
+	for (const auto & samp : fitter)
 	{
-		const auto & samp = fitter.m_samps.Samp(iSamp);
 		glm::vec4 pos = matTransform * glm::vec4(samp.m_pntCal.x, samp.m_pntCal.y, samp.m_pntCal.z, 1.0f);
 
 		glPushMatrix();
