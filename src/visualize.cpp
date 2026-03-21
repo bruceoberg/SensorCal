@@ -40,7 +40,7 @@ namespace Light
 
 void display_callback()
 {
-	auto & calib = libcalib::Calibrator::Ensure();
+	auto & calib = libcalib::Mag::CCalibrator::Ensure();
 	auto & fitter = calib.m_fitter;
 
 	fitter.UpdateQuality();

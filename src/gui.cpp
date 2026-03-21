@@ -79,7 +79,7 @@ MyFrame::MyFrame(wxWindow *parent, wxWindowID id, const wxString &title,
     const wxPoint &position, const wxSize& size, long style) :
     wxFrame( parent, id, title, position, size, style )
 {
-	libcalib::Calibrator & calib = libcalib::Calibrator::Ensure();
+	libcalib::Mag::CCalibrator & calib = libcalib::Mag::CCalibrator::Ensure();
 
 	wxPanel *panel;
 	wxMenuBar *menuBar;
@@ -251,7 +251,7 @@ void MyFrame::OnTimer(wxTimerEvent &event)
 	#define TWEAKABLE static const
 	TWEAKABLE int s_cDotsMax = 4;
 
-	const auto & calib = libcalib::Calibrator::Ensure();
+	const auto & calib = libcalib::Mag::CCalibrator::Ensure();
 	const auto & fitter = calib.m_fitter;
 
 	Scanner().Update();
@@ -346,7 +346,7 @@ void MyFrame::OnTimer(wxTimerEvent &event)
 
 void MyFrame::OnClear(wxCommandEvent &event)
 {
-	libcalib::Calibrator & calib = libcalib::Calibrator::Ensure();
+	libcalib::Mag::CCalibrator & calib = libcalib::Mag::CCalibrator::Ensure();
 
 	//printf("OnClear\n");
 	calib.Reset();
@@ -354,7 +354,7 @@ void MyFrame::OnClear(wxCommandEvent &event)
 
 void MyFrame::OnSendCal(wxCommandEvent &event)
 {
-	//const auto & calib = libcalib::Calibrator::Ensure();
+	//const auto & calib = libcalib::Mag::CCalibrator::Ensure();
 	//const auto & fitter = calib.m_fitter;
 
 
@@ -412,7 +412,7 @@ void MyFrame::OnShowMenu(wxMenuEvent &event)
 
 void MyFrame::OnPortMenu(wxCommandEvent &event)
 {
-	libcalib::Calibrator & calib = libcalib::Calibrator::Ensure();
+	libcalib::Mag::CCalibrator & calib = libcalib::Mag::CCalibrator::Ensure();
 
 	int id = event.GetId();
 	if (id == ID_RESTART_SCAN)

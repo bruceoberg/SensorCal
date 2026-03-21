@@ -85,7 +85,7 @@ static uint8_t* copy_lsb_first(uint8_t* dst, float f)
 
 int send_calibration()
 {
-	const auto & calib = libcalib::Calibrator::Ensure();
+	const auto & calib = libcalib::Mag::CCalibrator::Ensure();
 	const auto & fitter = calib.m_fitter;
 
 	const auto & vecV = fitter.m_cal.m_vecV;

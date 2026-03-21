@@ -280,7 +280,7 @@ void CPortScanner::ReadFromActive()
 
 	if (lt == CLineParser::LINETYPE_Uni) // skipping raw for now || lt == CLineParser::LINETYPE_Raw)
 	{
-		libcalib::Calibrator & calib = libcalib::Calibrator::Ensure();
+		libcalib::Mag::CCalibrator & calib = libcalib::Mag::CCalibrator::Ensure();
 		calib.AddSample(m_pProbeActive->m_linep.Samp());
 	}
 	else if (lt == CLineParser::LINETYPE_Cal1)
