@@ -2,7 +2,7 @@
 #define lineparser_h_
 
 #include <stdint.h>
-#include "libcalib/calibrator.h"
+#include "libcalib/mag_calibrator.h"
 
 // CLineParser — line-buffered parser for IMU serial data
 //
