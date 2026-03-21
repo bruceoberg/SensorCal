@@ -2,3 +2,7 @@ add_subdirectory(Fusion/Fusion)
 add_subdirectory(image2wx)
 add_subdirectory(libcalib)
 add_subdirectory(serial_cpp)
+# glm's CMakeLists.txt is so old it generates compatility warnings we can't fix.
+set(CMAKE_WARN_DEPRECATED OFF CACHE BOOL "" FORCE)
+add_subdirectory(glm)
+set(CMAKE_WARN_DEPRECATED ON CACHE BOOL "" FORCE)
