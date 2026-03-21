@@ -10,3 +10,6 @@
 [submodule "vendor/serial_cpp"]
 	path = vendor/serial_cpp
 	url = https://github.com/gbionics/serial_cpp.git
+[submodule "vendor/glm"]
+	path = vendor/glm
+	url = git@github.com:g-truc/glm.git
