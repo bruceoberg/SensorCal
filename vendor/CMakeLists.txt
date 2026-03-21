@@ -4,5 +4,7 @@ add_subdirectory(libcalib)
 add_subdirectory(serial_cpp)
 # glm's CMakeLists.txt is so old it generates compatility warnings we can't fix.
 set(CMAKE_WARN_DEPRECATED OFF CACHE BOOL "" FORCE)
+set(CMAKE_MESSAGE_LOG_LEVEL WARNING)
 add_subdirectory(glm)
+set(CMAKE_MESSAGE_LOG_LEVEL "")
 set(CMAKE_WARN_DEPRECATED ON CACHE BOOL "" FORCE)
