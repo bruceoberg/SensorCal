@@ -89,7 +89,8 @@ void CPortScanner::StartScan()
 		{
 			pProbe->m_serial.setPort(aryStrPort[i].ToStdString());
 			pProbe->m_serial.setBaudrate(115200);
-			pProbe->m_serial.setTimeout(serial_cpp::Timeout::simpleTimeout(50));
+			serial_cpp::Timeout timeout = serial_cpp::Timeout::simpleTimeout(50);
+			pProbe->m_serial.setTimeout(timeout);
 			pProbe->m_serial.open();
 		}
 		catch (...)
@@ -225,7 +226,8 @@ void CPortScanner::ForcePort(const wxString & strPort)
 	{
 		pProbe->m_serial.setPort(strPort.ToStdString());
 		pProbe->m_serial.setBaudrate(115200);
-		pProbe->m_serial.setTimeout(serial_cpp::Timeout::simpleTimeout(50));
+		serial_cpp::Timeout timeout = serial_cpp::Timeout::simpleTimeout(50);
+		pProbe->m_serial.setTimeout(timeout);
 		pProbe->m_serial.open();
 	}
 	catch (...)
