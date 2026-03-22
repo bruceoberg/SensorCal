@@ -4,7 +4,7 @@
 #include <wx/string.h>
 #include <stdint.h>
 #include <serial_cpp/serial.h>
-#include "lineparser.h"
+#include "libcalib/lineparser.h"
 
 class CPortScanner	// tag = scanner
 {
@@ -38,7 +38,7 @@ private:
 	{
 		wxString			m_strName;		// port device path
 		serial_cpp::Serial	m_serial;		// independent serial instance per probe
-		CLineParser			m_linep;		// independent line parser per probe
+		libcalib::CLineParser	m_linep;	// independent line parser per probe
 		int					m_cTicksOpen;	// ticks elapsed since port was opened
 	};
 

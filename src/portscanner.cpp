@@ -130,10 +130,10 @@ void CPortScanner::UpdateState()
 
 					if (cB > 0)
 					{
-						CLineParser::LINETYPE lt = pProbe->m_linep.LinetypeFeedBytes(
+						libcalib::CLineParser::LINETYPE lt = pProbe->m_linep.LinetypeFeedBytes(
 							aB, static_cast<int>(cB));
 
-						if (lt == CLineParser::LINETYPE_Raw || lt == CLineParser::LINETYPE_Uni)
+						if (lt == libcalib::CLineParser::LINETYPE_Raw || lt == libcalib::CLineParser::LINETYPE_Uni)
 						{
 							// This probe wins — move it to active, delete all others
 
@@ -275,19 +275,19 @@ void CPortScanner::ReadFromActive()
 	if (cB == 0)
 		return;
 
-	CLineParser::LINETYPE lt = m_pProbeActive->m_linep.LinetypeFeedBytes(
+	libcalib::CLineParser::LINETYPE lt = m_pProbeActive->m_linep.LinetypeFeedBytes(
 		aB, static_cast<int>(cB));
 
-	if (lt == CLineParser::LINETYPE_Uni) // skipping raw for now || lt == CLineParser::LINETYPE_Raw)
+	if (lt == libcalib::CLineParser::LINETYPE_Uni) // skipping raw for now || lt == libcalib::CLineParser::LINETYPE_Raw)
 	{
 		libcalib::Mag::CCalibrator & calib = libcalib::Mag::CCalibrator::Ensure();
 		calib.AddSample(m_pProbeActive->m_linep.Samp());
 	}
-	else if (lt == CLineParser::LINETYPE_Cal1)
+	else if (lt == libcalib::CLineParser::LINETYPE_Cal1)
 	{
 		cal1_data(m_pProbeActive->m_linep.PGCal());
 	}
-	else if (lt == CLineParser::LINETYPE_Cal2)
+	else if (lt == libcalib::CLineParser::LINETYPE_Cal2)
 	{
 		cal2_data(m_pProbeActive->m_linep.PGCal());
 	}
