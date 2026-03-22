@@ -131,7 +131,7 @@ void CPortScanner::UpdateState()
 					if (cB > 0)
 					{
 						libcalib::CLineParser::LINETYPE lt = pProbe->m_linep.LinetypeFeedBytes(
-							aB, static_cast<int>(cB));
+							cB, aB);
 
 						if (lt == libcalib::CLineParser::LINETYPE_Raw || lt == libcalib::CLineParser::LINETYPE_Uni)
 						{
@@ -276,7 +276,7 @@ void CPortScanner::ReadFromActive()
 		return;
 
 	libcalib::CLineParser::LINETYPE lt = m_pProbeActive->m_linep.LinetypeFeedBytes(
-		aB, static_cast<int>(cB));
+		cB, aB);
 
 	if (lt == libcalib::CLineParser::LINETYPE_Uni) // skipping raw for now || lt == libcalib::CLineParser::LINETYPE_Raw)
 	{

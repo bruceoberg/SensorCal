@@ -364,6 +364,21 @@ Inputs come first, outputs come last, like in a sentence.
 void ComputeQuadraticRoots(float gC, float gB, float gA, float * pGRoot1, float * pGRoot2);
 ```
 
+### Buffer + Count Ordering
+
+For pointer/array + count pairs, the count comes **first**, then the pointer. Use `size_t`
+for the count. This applies to function parameters, struct/class member ordering, and
+interface definitions. It does not match `memcpy`/STL conventions, but it is how we do things.
+
+```cpp
+// Good
+void    Write(size_t cB, const uint8_t * pB);
+size_t  CbRead(size_t cBMax, uint8_t * pB);
+
+// Bad — pointer before count, int instead of size_t
+void    Write(const uint8_t * pB, int cB);
+```
+
 ---
 
 ## Function Formatting
