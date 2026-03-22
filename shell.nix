@@ -1,5 +1,14 @@
 { pkgs ? import <nixpkgs> {} }:
 
+let
+  packagesLinux = pkgs.lib.optionals pkgs.stdenv.isLinux [
+    pkgs.libGL
+    pkgs.libGLU
+    pkgs.freeglut
+    pkgs.glm
+  ];
+in
+
 pkgs.mkShell
 {
   packages =
@@ -15,7 +24,7 @@ pkgs.mkShell
     # utilities
     pkgs.claude-code
     pkgs.imagemagick
-  ];
+  ] ++ packagesLinux;
 
   # ensure we get clang from nix
 
