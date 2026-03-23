@@ -6,6 +6,8 @@ let
     pkgs.libGLU
     pkgs.freeglut
     pkgs.glm
+    # for claude-code to be able to run tooling
+    pkgs.python3
   ];
 in
 
