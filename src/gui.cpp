@@ -1,6 +1,5 @@
 #include "gui.h"
 #include "visualize.h"
-#include "serialdata.h"
 #include "portscanner.h"
 #include "libcalib/mag_calibrator.h"
 
@@ -373,7 +372,7 @@ void MyFrame::OnSendCal(wxCommandEvent &event)
 	//	V[2], invW[2][0], invW[2][1], invW[2][2]);
 	
 	m_confirm_icon->SetBitmap(MyBitmap("checkempty.png"));
-	send_calibration();
+	Scanner().SendCalibration();
 }
 
 void calibration_confirmed()

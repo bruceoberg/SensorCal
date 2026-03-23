@@ -4,7 +4,7 @@
 #include <wx/string.h>
 #include <stdint.h>
 #include <serial_cpp/serial.h>
-#include "libcalib/lineparser.h"
+#include "libcalib/protocol.h"
 
 class CPortScanner	// tag = scanner
 {
@@ -20,7 +20,7 @@ public:
 	void RestartScan();				// close active port (if any) and call StartScan()
 	void CloseActive();
 
-	size_t WriteToActive(int cB, const void * pV);	// returns bytes written, 0 on error
+	void SendCalibration();			// send mag calibration via protocol manager
 
 private:
 	void UpdateState();				// drives state machine
@@ -34,13 +34,7 @@ private:
 		STATE_Nil = -1,
 	};
 
-	struct SProbePort	// tag = probe
-	{
-		wxString			m_strName;		// port device path
-		serial_cpp::Serial	m_serial;		// independent serial instance per probe
-		libcalib::CLineParser	m_linep;	// independent line parser per probe
-		int					m_cTicksOpen;	// ticks elapsed since port was opened
-	};
+	struct SProbePort;				// defined in portscanner.cpp (needs adapter types)
 
 	static const int s_cProbeMax = 16;
 

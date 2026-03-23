@@ -1,6 +1,5 @@
 #include "portscanner.h"
 #include "gui.h"
-#include "serialdata.h"
 #include "libcalib/mag_calibrator.h"
 #include <cassert>
 #include <algorithm>
@@ -9,12 +8,167 @@
 
 TWEAKABLE int s_cTicksScanTimeout = 36;		// ~500ms at 14ms/tick
 
+// --- Protocol adapter: IReader over serial_cpp::Serial ---
+
+class CSerialReader : public libcalib::Protocol::IReader	// tag = srdr
+{
+public:
+	CSerialReader() : m_pSerial(nullptr) {}
+
+	void SetSerial(serial_cpp::Serial * pSerial)	{ m_pSerial = pSerial; }
+
+	size_t CbRead(size_t cBMax, uint8_t * pB) override
+	{
+		if (m_pSerial == nullptr)
+			return 0;
+
+		try
+		{
+			size_t cBAvail = m_pSerial->available();
+			if (cBAvail == 0)
+				return 0;
+
+			return m_pSerial->read(pB, std::min(cBAvail, cBMax));
+		}
+		catch (...)
+		{
+			return 0;
+		}
+	}
+
+private:
+	serial_cpp::Serial *	m_pSerial;
+};
+
+// --- Protocol adapter: IWriter over serial_cpp::Serial ---
+
+class CSerialWriter : public libcalib::Protocol::IWriter	// tag = swtr
+{
+public:
+	CSerialWriter() : m_pSerial(nullptr) {}
+
+	void SetSerial(serial_cpp::Serial * pSerial)	{ m_pSerial = pSerial; }
+
+	void Write(size_t cB, const uint8_t * pB) override
+	{
+		if (m_pSerial == nullptr)
+			return;
+
+		try
+		{
+			m_pSerial->write(pB, cB);
+		}
+		catch (...)
+		{
+		}
+	}
+
+private:
+	serial_cpp::Serial *	m_pSerial;
+};
+
+// --- Protocol adapter: IReceiver for active port ---
+
+void calibration_confirmed();	// defined in gui.cpp
+
+class CPortReceiver : public libcalib::Protocol::IReceiver	// tag = prcvr
+{
+public:
+	CPortReceiver() : m_fCalSent(false), m_calSent() {}
+
+	void OnSample(const libcalib::SSample & samp) override
+	{
+		libcalib::Mag::CCalibrator & calib = libcalib::Mag::CCalibrator::Ensure();
+		calib.AddSample(samp);
+	}
+
+	void OnMagCal(const libcalib::Mag::SCal & cal) override
+	{
+		// compare echoed calibration against what we sent
+		if (!m_fCalSent)
+			return;
+
+		// NOTE(claude) approximate comparison — the device echoes floats through
+		// text formatting, so exact equality is not guaranteed
+		if (FCalMatches(cal, m_calSent))
+		{
+			m_fCalSent = false;
+			calibration_confirmed();
+		}
+	}
+
+	// called by SendCalibration() to record what was sent for confirmation matching
+	void NoteSent(const libcalib::Mag::SCal & cal)
+	{
+		m_calSent = cal;
+		m_fCalSent = true;
+	}
+
+private:
+	static bool FFloatOk(float actual, float expected)
+	{
+		float err = fabsf(actual - expected);
+		float maxerr = 0.0001f + fabsf(expected) * 0.00003f;
+		return err <= maxerr;
+	}
+
+	static bool FPointMatches(const libcalib::SPoint & a, const libcalib::SPoint & b)
+	{
+		return FFloatOk(a.x, b.x) && FFloatOk(a.y, b.y) && FFloatOk(a.z, b.z);
+	}
+
+	static bool FCalMatches(const libcalib::Mag::SCal & a, const libcalib::Mag::SCal & b)
+	{
+		return FPointMatches(a.m_vecV, b.m_vecV)
+			&& FFloatOk(a.m_sB, b.m_sB)
+			&& FPointMatches(a.m_matWInv.vecX, b.m_matWInv.vecX)
+			&& FPointMatches(a.m_matWInv.vecY, b.m_matWInv.vecY)
+			&& FPointMatches(a.m_matWInv.vecZ, b.m_matWInv.vecZ);
+	}
+
+	bool				m_fCalSent;
+	libcalib::Mag::SCal	m_calSent;
+};
+
+// --- SProbePort: per-port state during scanning and active use ---
+
+struct CPortScanner::SProbePort	// tag = probe
+{
+	SProbePort()
+	: m_protomgr(libcalib::Protocol::VER_MotionCal),
+	  m_cTicksOpen(0)
+	{
+		m_reader.SetSerial(&m_serial);
+		m_writer.SetSerial(&m_serial);
+		m_protomgr.Init(&m_writer, &m_reader, nullptr);	// no receiver during scanning
+	}
+
+	// call after scan wins to attach the receiver for active-port dispatching
+	void InitForActive(CPortReceiver * pReceiver)
+	{
+		m_protomgr.Init(&m_writer, &m_reader, pReceiver);
+	}
+
+	wxString							m_strName;		// port device path
+	serial_cpp::Serial					m_serial;		// serial instance
+	CSerialReader						m_reader;		// IReader adapter
+	CSerialWriter						m_writer;		// IWriter adapter
+	libcalib::Protocol::CManager		m_protomgr;		// protocol manager
+	int									m_cTicksOpen;	// ticks elapsed since port was opened
+};
+
+// --- singleton ---
+
 static CPortScanner g_scanner;
 
 CPortScanner & Scanner()
 {
 	return g_scanner;
 }
+
+// --- file-scope receiver instance for the active port ---
+
+static CPortReceiver g_receiver;
 
 // --- CPortScanner ---
 
@@ -123,48 +277,41 @@ void CPortScanner::UpdateState()
 
 			try
 			{
-				size_t cBAvail = pProbe->m_serial.available();
-				if (cBAvail > 0)
+				// let the protocol manager read and detect
+				pProbe->m_protomgr.Update();
+
+				if (pProbe->m_protomgr.FHasRemote())
 				{
-					uint8_t aB[256];
-					size_t cB = pProbe->m_serial.read(aB, std::min(cBAvail, sizeof(aB)));
+					// This probe wins — move it to active, delete all others
 
-					if (cB > 0)
+					m_strPortActive = pProbe->m_strName;
+					m_pProbeActive = pProbe;
+					m_apProbe[iProbe] = nullptr;
+
+					// attach receiver for active-port dispatching
+					m_pProbeActive->InitForActive(&g_receiver);
+
+					// Close and delete all other probes
+
+					for (int j = 0; j < m_cProbe; j++)
 					{
-						libcalib::CLineParser::LINETYPE lt = pProbe->m_linep.LinetypeFeedBytes(
-							cB, aB);
+						if (m_apProbe[j] == nullptr)
+							continue;
 
-						if (lt == libcalib::CLineParser::LINETYPE_Raw || lt == libcalib::CLineParser::LINETYPE_Uni)
+						try
 						{
-							// This probe wins — move it to active, delete all others
-
-							m_strPortActive = pProbe->m_strName;
-							m_pProbeActive = pProbe;
-							m_apProbe[iProbe] = nullptr;
-
-							// Close and delete all other probes
-
-							for (int j = 0; j < m_cProbe; j++)
-							{
-								if (m_apProbe[j] == nullptr)
-									continue;
-
-								try
-								{
-									if (m_apProbe[j]->m_serial.isOpen())
-										m_apProbe[j]->m_serial.close();
-								}
-								catch (...) {}
-
-								delete m_apProbe[j];
-								m_apProbe[j] = nullptr;
-							}
-
-							m_cProbe = 0;
-							m_state = STATE_Active;
-							return;
+							if (m_apProbe[j]->m_serial.isOpen())
+								m_apProbe[j]->m_serial.close();
 						}
+						catch (...) {}
+
+						delete m_apProbe[j];
+						m_apProbe[j] = nullptr;
 					}
+
+					m_cProbe = 0;
+					m_state = STATE_Active;
+					return;
 				}
 			}
 			catch (...)
@@ -237,7 +384,9 @@ void CPortScanner::ForcePort(const wxString & strPort)
 		return;
 	}
 
-	// Directly connect — skip probing
+	// Directly connect — skip probing, attach receiver
+
+	pProbe->InitForActive(&g_receiver);
 
 	m_pProbeActive = pProbe;
 	m_strPortActive = strPort;
@@ -256,57 +405,24 @@ void CPortScanner::ReadFromActive()
 	if (!FIsActive() || m_pProbeActive == nullptr)
 		return;
 
-	uint8_t aB[256];
-	size_t cB = 0;
-
 	try
 	{
-		size_t cBAvail = m_pProbeActive->m_serial.available();
-		if (cBAvail == 0)
-			return;
-
-		cB = m_pProbeActive->m_serial.read(aB, std::min(cBAvail, sizeof(aB)));
+		m_pProbeActive->m_protomgr.Update();
 	}
 	catch (...)
 	{
 		CloseActive();
-		return;
-	}
-
-	if (cB == 0)
-		return;
-
-	libcalib::CLineParser::LINETYPE lt = m_pProbeActive->m_linep.LinetypeFeedBytes(
-		cB, aB);
-
-	if (lt == libcalib::CLineParser::LINETYPE_Uni) // skipping raw for now || lt == libcalib::CLineParser::LINETYPE_Raw)
-	{
-		libcalib::Mag::CCalibrator & calib = libcalib::Mag::CCalibrator::Ensure();
-		calib.AddSample(m_pProbeActive->m_linep.Samp());
-	}
-	else if (lt == libcalib::CLineParser::LINETYPE_Cal1)
-	{
-		cal1_data(m_pProbeActive->m_linep.PGCal());
-	}
-	else if (lt == libcalib::CLineParser::LINETYPE_Cal2)
-	{
-		cal2_data(m_pProbeActive->m_linep.PGCal());
 	}
 }
 
-size_t CPortScanner::WriteToActive(int cB, const void * pV)
+void CPortScanner::SendCalibration()
 {
 	if (!FIsActive() || m_pProbeActive == nullptr)
-		return 0;
+		return;
 
-	try
-	{
-		return m_pProbeActive->m_serial.write(
-			static_cast<const uint8_t *>(pV),
-			static_cast<size_t>(cB));
-	}
-	catch (...)
-	{
-		return 0;
-	}
+	const auto & calib = libcalib::Mag::CCalibrator::Ensure();
+	const auto & cal = calib.m_fitter.m_cal;
+
+	g_receiver.NoteSent(cal);
+	m_pProbeActive->m_protomgr.SendMagCal(cal);
 }
