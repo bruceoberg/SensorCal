@@ -1,6 +1,7 @@
 #include "portscanner.h"
 #include "gui.h"
-#include "imuread.h"
+#include "serialdata.h"
+#include "libcalib/mag_calibrator.h"
 #include <cassert>
 #include <algorithm>
 

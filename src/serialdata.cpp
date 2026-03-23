@@ -1,4 +1,7 @@
-#include "imuread.h"
+#include "serialdata.h"
+#include "libcalib/mag_calibrator.h"
+#include <stdint.h>
+#include <math.h>
 #include "portscanner.h"
 
 // --- Calibration send/confirm logic ---

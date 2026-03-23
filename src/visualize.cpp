@@ -1,4 +1,6 @@
-#include "imuread.h"
+#include "visualize.h"
+#include "gui.h"
+#include "libcalib/mag_calibrator.h"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>

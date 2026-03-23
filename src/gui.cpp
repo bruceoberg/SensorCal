@@ -1,6 +1,8 @@
 #include "gui.h"
-#include "imuread.h"
+#include "visualize.h"
+#include "serialdata.h"
 #include "portscanner.h"
+#include "libcalib/mag_calibrator.h"
 
 #include "image2wx/image2wx.h"
 
