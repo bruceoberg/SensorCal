@@ -1,4 +1,5 @@
 #include "gui.h"
+#include "wizard.h"
 #include "visualize.h"
 #include "portscanner.h"
 #include "libcalib/mag_calibrator.h"
@@ -494,6 +495,13 @@ bool MyApp::OnInit()
 	frame->SetIcon(wxIcon("SensorCal"));
 #endif
 	frame->Show( true );
+
+	// Wizard window — on top of MyFrame, non-modal
+
+	CWizardFrame * pWizard = new CWizardFrame(nullptr, wxID_ANY,
+		"Calibration Wizard", pos, wxSize(450, 700));
+	pWizard->Show(true);
+
 	return true;
 }
 

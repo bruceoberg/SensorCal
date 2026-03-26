@@ -22,6 +22,9 @@ public:
 
 	void SendCalibration();			// send mag calibration via protocol manager
 
+	// Access to the active port's protocol manager (nullptr if not connected)
+	libcalib::Protocol::CManager * PProtomgrActive();
+
 private:
 	void UpdateState();				// drives state machine
 	void ReadFromActive();			// read, parse, dispatch
@@ -50,5 +53,10 @@ private:
 // Singleton accessor
 
 CPortScanner & Scanner();
+
+// Optional second sample callback (used by the wizard to feed CCoordinator)
+
+typedef void (*PFnOnSample)(const libcalib::SSample & samp);
+void SetWizardSampleCallback(PFnOnSample pfn);
 
 #endif // portscanner_h_

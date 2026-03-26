@@ -67,6 +67,15 @@ private:
 	serial_cpp::Serial *	m_pSerial;
 };
 
+// --- Wizard sample callback ---
+
+static PFnOnSample g_pfnWizardOnSample = nullptr;
+
+void SetWizardSampleCallback(PFnOnSample pfn)
+{
+	g_pfnWizardOnSample = pfn;
+}
+
 // --- Protocol adapter: IReceiver for active port ---
 
 void calibration_confirmed();	// defined in gui.cpp
@@ -80,6 +89,9 @@ public:
 	{
 		libcalib::Mag::CCalibrator & calib = libcalib::Mag::CCalibrator::Ensure();
 		calib.AddSample(samp);
+
+		if (g_pfnWizardOnSample)
+			g_pfnWizardOnSample(samp);
 	}
 
 	void OnMagCal(const libcalib::Mag::SCal & cal) override
@@ -425,4 +437,12 @@ void CPortScanner::SendCalibration()
 
 	g_receiver.NoteSent(cal);
 	m_pProbeActive->m_protomgr.SendMagCal(cal);
+}
+
+libcalib::Protocol::CManager * CPortScanner::PProtomgrActive()
+{
+	if (!FIsActive() || m_pProbeActive == nullptr)
+		return nullptr;
+
+	return &m_pProbeActive->m_protomgr;
 }
