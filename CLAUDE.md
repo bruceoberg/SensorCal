@@ -43,8 +43,7 @@ SensorCal/
 │   └── serial_cpp/       # git submodule — gbionics/serial_cpp
 ├── CMakeLists.txt
 ├── CMakePresets.json     # named presets: debug, dev, release
-├── CLAUDE.md             # this file
-└── CLAUDE-coding.md      # coding style reference
+└── CLAUDE.md             # this file
 ```
 
 Build system: **CMake + Ninja**. Presets use separate `binaryDir` paths per configuration.
@@ -67,7 +66,7 @@ The codebase is split between:
 - **Clean C++**: libcalib and newer SensorCal code
 - **Legacy C**: original MotionCal code that needs systematic replacement
 
-When rewriting legacy C, bring it fully up to the coding standard. Do not blend styles
+When rewriting legacy C, bring it fully up to the author's coding standards. Do not blend styles
 within a file.
 
 ### serialdata.cpp
@@ -149,23 +148,6 @@ The target is a **guided wizard** with these steps:
 
 All step logic and completion criteria live in **libcalib**. SensorCal provides wxWidgets
 panels. kitelite provides LED/TFT feedback for the same state machine.
-
-## Coding style
-
-See `CLAUDE-coding.md` in the repo root for full reference. Key rules:
-
-- Tabs (not spaces), 4-wide
-- `m_` prefix on all class/struct members
-- `g_` prefix on file-static globals; `s_` on function-static variables
-- No `enum class` — plain enums, integer-convertible
-- `ASSERT` / `CASSERT` / `VERIFY` for correctness checks
-- `nullptr` not `NULL`
-- C++ casts only — never C-style casts
-- `const` on read-only methods and pointed-to data
-- `override` on all overridden virtual functions
-- `//` comments only, never `/* */`
-- `BB(username)` for known improvement areas; `NOTE(username)` for non-obvious decisions
-- Functions named `[ReturnTag]VerbNoun`: `FIsOpen()`, `ReadData()`, `SendCalibration()`
 
 ## Vendor submodules
 
